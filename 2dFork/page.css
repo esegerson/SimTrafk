@@ -1,0 +1,37 @@
+HTML, BODY { margin: 0; height: 100%; overflow: hidden; }
+BODY {
+    background-color: #dfdfdf;
+    font-family: 'Play', sans-serif;
+    font-size: 16px;
+}
+NOSCRIPT > DIV {
+    max-width: 50%;
+    padding: 50px;
+}
+NOSCRIPT H3 { color: red; font-size: 2em; }
+NOSCRIPT H4 { color: #777; font-size: 1.4em; }
+/*BUTTON { font-family: 'Play', sans-serif; }*/
+.message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    border-radius: 10px;
+    border: solid 1px black;
+    background-color: #eee;
+    padding: 20px;
+    z-index: 10;
+    opacity: 0.8;
+    max-width: 33%;
+}
+DIV.nostyle { display: none; }
+.message > *:first-child { margin-top: 0; }
+.message > *:last-child { margin-bottom: 0; }
+.message:hover { opacity: 1; }
+.message .close { position: absolute; top: 10px; right: 10px; font-weight: bold; }
+@media (max-width: 800px) {
+    HTML, BODY { font-size: 18px; }
+    .message { max-width: 100%; margin-left: 20px; }
+}
+@media (max-height: 400px) {
+    HTML, BODY { font-size: 12px; }
+}

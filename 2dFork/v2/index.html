@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>SimTrafk Test 2</title>
+    <style>
+        HTML, BODY { margin: 0; height: 100%; overflow: hidden; }
+        BODY {
+            background-color: #dfdfdf;
+            /*background: linear-gradient(to bottom, #eee, #ccc);*/
+            font-family: 'Play', sans-serif;
+            font-size: 16px;
+        }
+        /*BUTTON { font-family: 'Play', sans-serif; }*/
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            border-radius: 10px;
+            border: solid 1px black;
+            background-color: #eee;
+            padding: 20px;
+            z-index: 10;
+            opacity: 0.8;
+            max-width: 33%;
+        }
+        .message > *:first-child { margin-top: 0; }
+        .message > *:last-child { margin-bottom: 0; }
+        .message:hover { opacity: 1; }
+        .car {
+            position: absolute;
+            background-color: #ff8080;
+            width: 32px;
+            height: 16px;
+            top: 100px;
+            border-radius: 3px 8px 8px 3px;
+            border: solid 1px black;
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
+            line-height: 1.4em;
+            font-family: sans-serif;
+        }
+    </style>
+    <link href='http://fonts.googleapis.com/css?family=Play' rel='stylesheet' type='text/css'>
+    <script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="game.js"></script>
+</head>
+<body>
+    <div class="message">
+        <h1>Experiment #2</h1>
+        <p>Each car has a constant velocity and turning rate.</p>
+        <p>Also, the simulation now adapts to the framerate.  The cars will travel the same speed no matter
+        what the framerate is.</p>
+        <button id="btnAdd" onclick="add()">Add cars</button>
+        <button id="btnReset" onclick="reset()">Remove all but 1</button>
+        <button id="btnV2" onclick="window.location.href = '../v1';">Version 1</button>
+    </div>
+</body>
+</html>
