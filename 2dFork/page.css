@@ -1,4 +1,9 @@
-HTML, BODY { margin: 0; height: 100%; overflow: hidden; }
+HTML, BODY { 
+	margin: 0; 
+	height: 100%; 
+	overflow: hidden; 
+	/*user-zoom: fixed;*/
+}
 BODY {
     background-color: #dfdfdf;
     font-family: 'Play', sans-serif;

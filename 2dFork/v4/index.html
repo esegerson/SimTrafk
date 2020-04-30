@@ -13,24 +13,26 @@
 	<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=0"/> <!--320-->
 	<!-- <meta name="apple-mobile-web-app-capable" content="yes" /> -->
     <link href='https://fonts.googleapis.com/css?family=Play' rel="stylesheet">
-    <link href="page.css" rel="stylesheet">
-    <link href="game.css" rel="stylesheet">
+    <link href="../page.css" rel="stylesheet">
+    <link href="../game.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-	<script src="globals.js"></script>
+	<script src="../globals.js"></script>
     <script src="emitter.js"></script>
 	<script src="car.js"></script>
 	<script src="game.js"></script>
 </head>
 <body>
     <div class="message">
-        <h1>Experiment #4.1</h1>
-        <p>Improved navigation.</p>
-        <p>Next experiment:  Cars avoid crashing into cars in front of them.</p>
+        <h1>Experiment #4</h1>
+        <p>There is now a particle emitter for cars. Particles are automatically culled if they drive off the screen.</p>
+        <p>Cars now have a goal (the dotted line).</p>
+        <p>Next experiment:  Cars avoid crashing into cars in front of them.  Optimize pathfinding (fast cars don't stay on the road, slow cars have trouble aligning with the road).  Improve turning speed.
+        </p>
         <span id="spanAlive"></span>
         <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
         <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
 		<button id="btnSteering" onclick="toggleSteering()">Show Steering</button>
-		<button id="btnV2" onclick="window.location.href = 'v4/index.html';">Experiment 4.0</button>
+		<button id="btnV2" onclick="window.location.href = '../v3.1/index.html';">Experiment 3.1</button>
         <button id="btnHide" onclick="$(this).parent().slideUp('slow')" class="close">X</button><br>
 		<div>
 			Rate: <input id="slRate" type="range" min="200" max="20000" value="10000" step="200" /><span id="lblSlRate"></span><br>

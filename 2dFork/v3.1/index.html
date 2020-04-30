@@ -10,34 +10,34 @@
     <!--<meta property="og:image" content="social_image.png">-->
     <meta property="og:description" content="Do you think roads are poorly designed?  Do you think you can do better?
         Prove it with this fun HTML5 game!">
-	<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=0"/> <!--320-->
-	<!-- <meta name="apple-mobile-web-app-capable" content="yes" /> -->
     <link href='https://fonts.googleapis.com/css?family=Play' rel="stylesheet">
-    <link href="page.css" rel="stylesheet">
-    <link href="game.css" rel="stylesheet">
+    <link href="../page.css" rel="stylesheet">
+    <link href="../game.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-	<script src="globals.js"></script>
-    <script src="emitter.js"></script>
-	<script src="car.js"></script>
-	<script src="game.js"></script>
+    <script src="game.js"></script>
 </head>
 <body>
     <div class="message">
-        <h1>Experiment #4.1</h1>
-        <p>Improved navigation.</p>
-        <p>Next experiment:  Cars avoid crashing into cars in front of them.</p>
+        <h1>Experiment #3.1</h1>
+        <p>Optimized proximity search.</p>
+        <p>Refactored code.</p>
+        <p>Each driver maintains a constant turning rate and will try to maintain a constant speed
+            but will brake to prevent a crash.  If a car comes to a complete stop, the driver will
+            shut off the car's engine.
+            A driver uses one foot to drive and so cannot switch instantly from
+            braking to accelerating or vice versa.  Braking is four times as strong as acceleration.
+        </p>
+        <p>Clicking a car will double it's maximum speed, and start the car's engine if it's off.
+            Red-numbered drivers are speed demons.
+        </p>
+        <p>Next experiment:  Have drivers look ahead instead of around.  Start the engine if the path ahead is clear.
+            Crash cars if they touch.
+        </p>
         <span id="spanAlive"></span>
-        <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
-        <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
-		<button id="btnSteering" onclick="toggleSteering()">Show Steering</button>
-		<button id="btnV2" onclick="window.location.href = 'v4/index.html';">Experiment 4.0</button>
-        <button id="btnHide" onclick="$(this).parent().slideUp('slow')" class="close">X</button><br>
-		<div>
-			Rate: <input id="slRate" type="range" min="200" max="20000" value="10000" step="200" /><span id="lblSlRate"></span><br>
-			Velo: <input id="slVelo" type="range" min="10" max="500" value="100" step="10" /><span id="lblSlVelo"></span><br>
-			Dir: <input id="slDir" type="range" min="-180" max="180" value="140" step="10" /><span id="lblSlDir"></span>
-		</div>
-		<div id="debug" style="display: none;"></div>
+        <button id="btnAdd" onclick="add()">Add cars</button>
+        <button id="btnReset" onclick="reset()">Remove all but 1</button>
+        <button id="btnV2" onclick="window.location.href = '../v3/index.html';">Experiment 3.0</button>
+        <button id="btnHide" onclick="$(this).parent().slideUp('slow')" class="close">X</button>
     </div>
     <!--googleoff: all-->
     <noindex class="robots-nocontent">
@@ -54,7 +54,5 @@
         </div>
     </noindex>
     <!--googleon: all-->
-	<div id="road"></div>
-	<div id="cars"></div>
 </body>
 </html>

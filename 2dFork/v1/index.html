@@ -5,7 +5,12 @@
     <title>SimTrafk Test 2</title>
     <style>
         HTML, BODY { margin: 0; height: 100%; overflow: hidden; }
-        BODY { background-color: #dfdfdf; font-family: 'Play', sans-serif; font-size: 24px; }
+        BODY {
+            background-color: #dfdfdf;
+            /*background: linear-gradient(to bottom, #eee, #ccc);*/
+            font-family: 'Play', sans-serif;
+            font-size: 16px;
+        }
         .car {
             position: absolute;
             background-color: #ff8080;
@@ -19,12 +24,34 @@
             font-weight: bold;
             line-height: 1.4em;
         }
+		.message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            border-radius: 10px;
+            border: solid 1px black;
+            background-color: #eee;
+            padding: 20px;
+            z-index: 10;
+            opacity: 0.8;
+            max-width: 33%;
+        }
+        .message > *:first-child { margin-top: 0; }
+        .message > *:last-child { margin-bottom: 0; }
+        .message:hover { opacity: 1; }
     </style>
-    <link href='http://fonts.googleapis.com/css?family=Play' rel='stylesheet' type='text/css'>
-    <script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <link href='https://fonts.googleapis.com/css?family=Play' rel='stylesheet' type='text/css'>
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
     <script src="game.js"></script>
 </head>
 <body>
+	<div class="message">
+        <h1>Experiment #1</h1>
+        <p>Testing the performance of the browser DOM engine.  How many elements can be animated simultaneously?  
+		Is JavaScript and CSS a viable game engine?</p>
+		<p>Styled a simple car in CSS.</p>
+        <button id="btnV2" onclick="window.location.href = '../index.html';">Return to latest version</button>
+    </div>
 
 </body>
 </html>

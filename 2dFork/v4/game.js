@@ -27,7 +27,6 @@ function init() {
 	emitter.constructor();
 	generateRoadPath();
 	drawRoad();
-	toggleSteering();
 	return;
 
     //Init cars
@@ -111,7 +110,7 @@ function simulate(delta) {
 	$.each(emitter.carParticles, function(i, cp) {
 		cp.car.Simulate(delta, roadPath);
 		cp.car.Render();
-		debug += formatSteeringNum(cp.car.dTarget, cp.car.id);
+		debug += formatSteeringNum(cp.car.dRate, cp.car.id);
 	});
 	$("#debug").html(debug);
 	
@@ -167,8 +166,8 @@ function simulate(delta) {
 
 function formatSteeringNum(n, i) {
 	//Limit number
-	if (n > 99) n = 99;
-	if (n < -99) n = -99;
+	if (n > 99.9) n = 99.9;
+	if (n < -99.9) n = -99.9;
 
 	//Format number
 	var num = "";
@@ -265,58 +264,4 @@ function car_click(e) {
         c.v = c.maxV / 4;
         c.coolDown = 5;
     }
-}
-
-function describeArc(x, y, radius, startAngle, endAngle){
-	//Need to mirror the angle along x-axis (y becomes -y) for screen view which has 0,0 at top-left
-	startAngle = -startAngle;
-	endAngle = -endAngle;
-
-	if (startAngle > endAngle) {
-		var t = startAngle;
-		startAngle = endAngle;
-		endAngle = t;
-	}
-	while (endAngle - startAngle > 360) endAngle -= 360;
-	
-	//Take the short route
-	if (endAngle - startAngle > 180) {
-		var t = startAngle;
-		startAngle = endAngle;
-		endAngle = t;
-	}
-	
-	var start = polarToCartesian(x, y, radius, endAngle);
-	var end = polarToCartesian(x, y, radius, startAngle);
-
-	var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
-	var d = [
-		"M", start.x, start.y, 
-		"A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-	].join(" ");
-
-	return d;       
-}
-
-function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-	var angleInRadians = (angleInDegrees-90) * Math.PI / 180.0;
-
-	return {
-		x: centerX + (radius * Math.cos(angleInRadians)),
-		y: centerY + (radius * Math.sin(angleInRadians))
-	};
-}
-
-function angleFromCoords(sourcex, sourcey, targetx, targety) {
-	var dx = sourcex - targetx;
-	var dy = sourcey - targety;
-	var rad = Math.atan(dx / dy); //Classic formula is y/x but had to flip here to make it look right, not sure why
-	var deg = rad * 180 / Math.PI;
-	
-	//Get correct quadrant
-	if (dy > 0 && dx < 0) deg = 180 - deg;
-	if (dy < 0 && dx < 0) deg = 180 + deg;
-
-	return deg;
 }
