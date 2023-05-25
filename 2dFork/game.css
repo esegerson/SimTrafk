@@ -54,7 +54,7 @@
 
 INPUT[type=range] { width: 100px; position: relative; top: 7px; }
 
-#debug { font-size: 80%; }
+#debug { font-size: 80%; font-family: sans-serif; }
 #debug > DIV { display: inline-block; text-align: center; }
 #debug > DIV > SPAN { border-radius: 0 20px 20px 20px; width: 20px; height: 20px; display: block; background-color: #999; margin-left: 11px; }
 #debug > DIV > SPAN > SPAN { display: block; font-family: sans-serif; font-size: 80%; }
@@ -65,7 +65,8 @@ INPUT[type=range] { width: 100px; position: relative; top: 7px; }
 	background-color: rgba(128, 128, 128, 0.3);
 	width: 100px;
 	height: 100px;
-	font-size: 12px;
+	font-family: sans-serif;
+	font-size: 10px;
 	color: #444;
 	border-radius: 3px;
 }
@@ -88,3 +89,21 @@ svg > path.steer {
 	stroke-width: 1px;
 	fill: none;
 }
+
+svg > circle.turnCircle { stroke: rgba(0, 0, 0, 0.1); fill: none; stroke-width: 2; }
+
+DIV#roadNetwork {
+	position: absolute;
+	top: 4px; /*To align with cars, emitter, and target debug lines*/
+	left: 4px; /*To align with cars, emitter, and target debug lines*/
+	bottom: 0;
+	right: 0;
+}
+
+DIV#roadNetwork > svg > path { fill: transparent; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+DIV#roadNetwork > svg.buffer { opacity: 0.1; }
+DIV#roadNetwork > svg.buffer > path { stroke: black; stroke-width: 40; }
+DIV#roadNetwork > svg > circle { fill: transparent; stroke: black; stroke-width: 2px; }
+DIV#roadNetwork > svg > circle.firstnode { fill: black; stroke: none; }
+DIV#roadNetwork > svg > circle.virtual { fill: rgba(0,0,0,0.5); stroke: none; filter: drop-shadow(0 0 2px white) drop-shadow(0 0 2px white); }
+DIV#roadNetwork > svg > circle.firstnode.virtual { fill: black; stroke: none; }

@@ -18,7 +18,7 @@ function Driver() {
     this.isMale = Math.random() < 0.5;
     this.name = this.isMale ? 
         C_namesTop200M[Math.floor(Math.random() * C_namesTop200M.length)] : 
-        C_namesTop200F[Math.floor(Math.random() * C_namesTop200F.length)]; //C_names[Math.floor(Math.random() * C_names.length)];
+        C_namesTop200F[Math.floor(Math.random() * C_namesTop200F.length)];
     this.age = Math.floor(Math.random() * (100 - 15) + 15); //15-99
     this.reaction = Math.floor(Math.random() * 10); //0 (computer-perfect) to 9 (incapacitated)
     this.intelligence = Math.floor(Math.random() * 10); //0 (stupid) to 9 (computer-perfect genius)
@@ -40,6 +40,7 @@ function Driver() {
 function Car() { 
     //Methods
 	this.constructor = function(i, x, y, d, v) {
+        //i = ID, x,y = position coordinates, d = direction (degrees), v = velocity
 		var el = $("<div class='car'>" + i + "</div>");
         this.e = $("#cars").append(el).find(".car:last-child");
 		this.id = i;
@@ -86,10 +87,11 @@ function Car() {
     };
 	
 	this.Simulate = function(delta, road) {
+        //delta = time since last simulation step
 		this.target = this.GetTarget(road); //This will change the target down the road
-		this.dTarget = this.GetTargetAngle() - 90;
+		this.dTarget = this.GetTargetAngle(); //Ranges from -180 to 180 with 0 pointing "forward" and -90 = "left side"
 		
-		//this.TurnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
+		this.TurnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
 		//this.dRate += 0.01 * delta;
 		
 		
@@ -102,10 +104,12 @@ function Car() {
 	}
 	
 	this.GetTargetAngle = function() {
+        //Return angle in degrees ranging from -180 to 180
+        //with 0 pointing "forward", -90 pointing "left" and 90 pointing "right".
 		var deg = angleFromCoords(this.x, this.y, this.target.x, this.target.y);
 
-		//Convert to local (0deg faces "forward")
-		deg = deg;// - this.d; 
+		//Convert to local (so 0deg faces "forward")
+		deg -= this.d; 
 		
 		if (deg > 180) deg -= 360;
 		if (deg < -180) deg += 360;
@@ -113,6 +117,7 @@ function Car() {
 	}
 	
 	this.Render = function() {
+        if (this.target == undefined) return; //May be if in slow mode
 		$(this.e).css("left", Math.round(this.x) - 16) //-16 for half-length of car
             .css("top", Math.round(this.y) - 8) //-8 for half-width of car
             .css("transform", "rotate(" + Math.round(this.d) + "deg)")
@@ -125,10 +130,9 @@ function Car() {
 		var x2 = Math.round(this.target.x) + 4;
 		var y2 = Math.round(this.target.y) + 4;
 		
-		var d1 = this.d + 90;
-		var d2 = this.dTarget;
-		d1 = 0;
-		d2 = angleFromCoords(0, 0, 1, 1);
+        var d1 = -this.d - 90; //Start of arc is in front of car
+		var d2 = -this.d - this.dTarget - 90; //End of arc is at red line to target
+		
 		var target = "<line class='targ' x1='" + x1 + "' y1='" + y1 + "' x2='" + x2 + "' y2='" + y2 + "' />";
 		var steeringTarget = "<path class='steer' d='" + describeArc(x1, y1, 40, d1, d2) + "' />";
 		var svg = "<svg id='svg" + this.id + "'>" + target + steeringTarget + "</svg>";
@@ -136,17 +140,47 @@ function Car() {
 			$("BODY").append(svg);
 		else
 			$("BODY > svg#svg" + this.id).replaceWith(svg);
-		if ($("#dbg" + this.id).length == 0)
+		
+        //Add some text debugging data
+        if ($("#dbg" + this.id).length == 0)
 			$("BODY > DIV#cars").append("<div id='dbg" + this.id + "' class='carExtra'></div>");
-		$("#dbg" + this.id).text(this.d.toFixed(0) + ", " + this.dTarget.toFixed(0))
-			.css("top", this.y + 20).css("left", this.x + 20);
+		var debugText = "<b>" + this.driver.name + "</b>"
+            + "<br>d=" + this.d.toFixed(0) 
+            + "<br>dTarget=" + this.dTarget.toFixed(0)
+            + "<br>dRate=" + this.dRate.toFixed(0);
+        $("#dbg" + this.id).html(debugText).css("top", this.y + 20).css("left", this.x + 20);
+
+        //Draw turn circle
+        //Turn circle is based on dRate.  
+        //dRate=0 is a straight line (infinite radius).  
+        //Don't draw circles with radius greater than 1000
+        //Circle center point will be somewhere along line +/-90deg from direction of car
+        //dRate < 0 = turn left, dRate > 0 = turn right
+        //Eyeball, dRate=30 = ~3 car lengths radius.  Car length = 32px
+        //If dRate=30 = r=50, then dRate=15 = r=100 and dRate=5 = r=300 and dRate=60 = r=25
+        //That matches the equation:  r=30*50/dRate
+        svg = document.getElementById("svg" + this.id);
+        var dRateTest = this.dRate;
+        if (Math.abs(dRateTest) > 0.0001) {
+            var sign = Math.abs(dRateTest) / dRateTest;
+            const factor = 2865; //Magic number based on various observations (varying dRate and v)
+            var r = Math.abs(factor / dRateTest);
+            if (Math.abs(r) < 1000) {
+                var g = -90 * sign - this.d; //Perpendicular to local direction
+                var cx = Math.cos(g * Math.PI / 180) * r + this.x;
+                var cy = -Math.sin(g * Math.PI / 180) * r + this.y;
+                var turnCircle = "<circle r='" + r + "' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
+                var turnCircleCenter = "<circle r='1' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
+                svg.innerHTML = svg.innerHTML + turnCircle + turnCircleCenter;
+            }
+        }
 	}
 
 	this.GetTarget = function(road) {
 		//road is an array of {x,y}
 		var curTarget = road[this.curRoadTargetIndex];
 		var dist = this.DistanceTo(curTarget.x, curTarget.y);
-		var lookAheadDist = this.v / 2 * 3;
+		var lookAheadDist = this.v / 2;
 		if (lookAheadDist < 30) lookAheadDist = 30;
 		if (dist < lookAheadDist && this.curRoadTargetIndex < road.length - 1) this.curRoadTargetIndex++;
 		return road[this.curRoadTargetIndex];
@@ -161,8 +195,8 @@ function Car() {
 		//If car is at (0, 0) and pointed at angle 0 and target is at (100, 10), then target angle = ~10 deg.
 		//This will be a simple algorithm.  Given the car's turning radius, it's possible to get stuck circling
 		//a target forever.  This algorithm does not care if that happens.
-		
-		//absAng is the angle between positive-x axis and the target, sweeping clockwise
+
+        //absAng is the angle between positive-x axis and the target, sweeping clockwise
 		var absAng = Math.atan2(y - this.y, x - this.x) * 180 / Math.PI;
 		
 		//Correct absAng so it sweeps CCW from positive-x axis to the target (the "normal" way)
@@ -179,7 +213,7 @@ function Car() {
 		var requestTurnRate = localAng * 2;
 		if (requestTurnRate > 90) requestTurnRate = 90 * Math.abs(requestTurnRate) / requestTurnRate;
 		
-		this.dRate += this.getTurnRate(requestTurnRate, delta);
+		this.dRate = this.getTurnRate(requestTurnRate, delta);
 		this.dTarget = localAng;
 		return localAng;
 	}
@@ -189,11 +223,30 @@ function Car() {
 		//4.1 rules:  dRateMax is a constant now, not dependant on v.
 		//Also, dRateJerkMax is dumb.  
 		//Remember:  dRate = the speed at which the wheel is turning.  
+        //Nope:  dRate is how much the wheel has turned.  Something else represents the delta-dRate.
 		//dRateJerk = the change, which is practically infinity:  anybody can be turning left and instantly start turning right.
 		//Might still keep dRateJerkMax just to round off hard edges, though.
+        //v4.0:  This function produced a wavy, oscillating motion of oversteering and correction, ending with
+        //spinning in spot.  For example, if target is at 90deg (right side), slowly start turning the wheel
+        //to the right.  When the car is pointed directly at the target, the wheel is torqued way to the right
+        //so takes time to get it back to neutral, at which point the target is way to the left, so repeat.
+        //v4.1:  Anticipate oversteering, start "un-steering" when target angle is getting small.
 		
+        //v4.1: But how do I do that?
+        //      Maybe cap dRate as less than dTarget?
+        //      Also, this is the steering wheel which has a max.
+
+        //v4.1: No human makes 60 course corrections per second (the framerate of this sim).
+        //      Give course corrections a 1 second cooldown (similar to human reaction times).
+        //      That means after issuing a requestedDRate, can't change that for 60 frames.
+        //      Meanwhile, can move the steering wheel toward that target (slowly or quickly).
+
+        //Also, let's talk about moving a steering wheel.  To make a sharp turn, isn't it normal 
+        //to twist the wheel some amount, hold it for a short time, then turn it back past zero a bit,
+        //then turn it slowly back to zero (oversteer a bit)?
+
 		//Get the basics down
-		var dRateMax = 0.05; //Units unknown, produces a "peppy" but realistic turn rate
+		var dRateMax = 3; //Units unknown, produces a "peppy" but realistic turn rate
 		var curDRate = this.dRate;
 		var dRateJerkMax = 0.1; //How quickly the steering wheel is being turned
 		var sign = Math.abs(requestDRate) / requestDRate; //Either +1 or -1

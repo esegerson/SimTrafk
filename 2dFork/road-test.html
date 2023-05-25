@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
     <meta charset="UTF-8">
-    <title>SimTrafk</title>
+    <title>SimTrafk Road Test</title>
     <meta name="description" content="Do you think roads are poorly designed?  Do you think you can do better?
         Prove it with this fun HTML5 game!">
     <meta name="author" content="Eric Segerson">
@@ -20,6 +20,7 @@
     <script src="emitter.js"></script>
 	<script src="car.js"></script>
 	<script src="game.js"></script>
+    <script src="road1.js"></script>
     <style>
         .message { transform: rotate(0deg); transition: transform 1s; transform-origin: top right; }
         .message[data-hide] #btnHide { top: -12px; }
@@ -43,44 +44,41 @@
 </head>
 <body>
     <div class="message">
-        <h1>Experiment #4.1</h1>
-        <p><ul><li>Improved navigation.</li>
-            <li>Added a lot more debugging on-screen:  
-                <ul style="font-family: sans-serif; font-size: 10pt"><li>Red line pointing to the current target,</li>
-                <li>Blue arc showing the turning needed to get to the target,</li>
-                <li>Gray circle showing the turning circle at the current turning rate (dRate),</li>
-                <li>Gray box showing additional car parameters
-                (d=global direction, dTarget=local direction to target, dRate=turning rate),</li></ul></li>
-            <li>Steering only mildly improved.</li>
-            <li>Added a way to unhide this panel when hidden.</li></ul></p>
-        <p>Problems:  <b>Steering!</b>  It's too fast, too slow, turn radius is terrible.  Cars cut corners.  
-            Cars circle a road node perpetually (when the node is near the center of the minimum turn circle).
+        <h1>Experiment #4.2</h1>
+        <p>Road Test.  Read roads from file, render on screen, 
+            see if cars will follow the roads, cull cars that drive off-screen,
+            add cars to roads that enter the screen.  Slow/stop car if path is obstructed. 
+            All roads are single-lane and one-way.  Roads connect to each other.</p>
+        <p>Key: Circles are road nodes. 
+            Small dots are virtual (computed) road nodes.  
+            Black dots are road start nodes. <br>
+            <b style="color: red;">Red</b> road is three roads connected, one-way clockwise. <br>
+            <b style="color: orange;">Orange</b> road is a shortcut. <br>
+            <b style="color: brown;">Brown</b> is an out-of-bounds exit (culler).<br>
+            <b style="color: green;">Green</b> is an out-of-bounds entrance (emitter).<br>
+            <b style="color: blue;">Blue</b> is an in-bounds dead-end (cars should stop).<br>
+            <b style="color: purple;">Purple</b> is a self-connecting cul-de-sac (effective dead-end with one-way).
+            Gray is road bounds.
         </p>
-        <p>Next experiment:  
-            <ul><li>More complex road network</li>
-                <li>Better steering</li>
-                <li>Manual control of car (for debugging and brainstorming)</li>
-                <li>Cars avoid crashing into cars in front of them.</li></ul></p>
         <span id="spanAlive"></span>
         <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
         <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
         <button id="btnSlow" onclick="slowSim()">Slow Sim</button>
-        <button id="btnStop" onclick="stop = true">Stop Sim</button>
 		<button id="btnSteering" onclick="toggleSteering()">Show Steering</button>
 		<button id="btnHide" onclick="$(this).parent().rotate()" class="close">X</button><br>
-		<div>
-			Rate: <input id="slRate" type="range" min="1000" max="99000" value="10000" step="1000" /><span id="lblSlRate"></span><br>
+		<!-- <div>
+			Rate: <input id="slRate" type="range" min="200" max="20000" value="10000" step="200" /><span id="lblSlRate"></span><br>
 			Velo: <input id="slVelo" type="range" min="10" max="500" value="100" step="10" /><span id="lblSlVelo"></span><br>
 			Dir: <input id="slDir" type="range" min="-180" max="180" value="140" step="10" /><span id="lblSlDir"></span>
-		</div>
+		</div> -->
 		<div id="debug" style="display: none;"></div>
         <p>Other versions: 
             <a href="v1/index.html">1</a>,
             <a href="v2/index.html">2</a>,
             <a href="v3/index.html">3</a>,
             <a href="v3.1/index.html">3.1</a>,
-            <a href="v4/index.html">4</a>
-            <a href="road-test.html">4.2</a>
+            <a href="v4/index.html">4.0</a>
+            <a href="index.html">4.1</a>
         </p>
     </div>
     <!--googleoff: all-->
@@ -100,5 +98,13 @@
     <!--googleon: all-->
 	<div id="road"></div>
 	<div id="cars"></div>
+    <div id="roadNetwork">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000">
+            <path d="M 16 16 L 128 64" stroke="black" fill="transparent" />
+            <path d="M 48 64 L 256 128" stroke="black" fill="transparent" />
+            <path d="M 256 256 L 2048 1024" stroke="black" fill="transparent" />
+            <path d="M 32 0 L 64 64 L 32 64 L 64 128" stroke="black" fill="transparent" />
+        </svg>
+    </div>
 </body>
 </html>

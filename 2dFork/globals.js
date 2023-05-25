@@ -4,7 +4,9 @@ var numCars = 0;
 var lastTime = null;
 var accel = 30;
 var decel = accel * 4;
-var pause = false;
+var pause = false; //Pause the simulation
+var slow = false; //Slow the simulation down by 1/1000 for debugging
+var stop = false; //Kills iteration of step()
 
 var carType = { 
     Subcompact : 0,
@@ -70,4 +72,5 @@ var C_namesTop200F = ["Mary", "Helen", "Margaret", "Anna", "Ruth", "Elizabeth", 
     "Isabelle", "Bonnie", "Virgie", "Sophia", "Cleo", "Jeanette", "Nell", "Eliza"];
 
 var roadPath = [];
+var roadNetwork = {};
 var emitter = {}; 

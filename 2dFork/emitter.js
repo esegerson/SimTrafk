@@ -51,6 +51,7 @@ function Emitter() {
 				$(deleted).remove();
 				$("#svg" + c.id).remove();
 				$("#spanAlive").text(this.carParticles.length + " driving");
+				$("#dbg" + deleted[0].innerText).remove(); //A bit hackish
 			}
 		};
 	}
@@ -67,6 +68,8 @@ function Emitter() {
 			var deleted = this.carParticles.splice(i, 1)[0].car.e;
 			$(deleted).remove();
 			$("#svg" + id).remove();
+			$("#spanAlive").text(this.carParticles.length + " driving");
+			$("#dbg" + deleted[0].innerText).remove(); //A bit hackish
 		}
 	}
 	
