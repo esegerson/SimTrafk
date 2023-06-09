@@ -58,6 +58,8 @@ function step() {
             .css("top", Math.round(car.y))
             .css("transform", "rotate(" + Math.round(car.d) + "deg)");
     });
+    var numAlive = cars.length;
+    $("#spanAlive").html(numAlive + " driving");
     setTimeout(function() {
         window.requestAnimationFrame(step);
     }, 1000 / fps);
