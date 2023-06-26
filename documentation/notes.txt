@@ -1,0 +1,18 @@
+Car speed:
+
+The current car model (defined in game.css) is 32px long (and 16px wide).  But how big is that in simulated units?
+
+Average length of cars by type:
+    Type        Length (m)
+    Mini Cars   3.195
+    Small Car   4.215
+    Mid-Sized   4.620
+    Full-Sized  4.800
+    Small SUV   4.400
+    Large SUV   5.110
+    Sm. Pickup  4.981
+    Lg. Pickup  5.614
+
+If we call our car a mid-sized car, then 32px = 4.62m, so 1px = 0.144m and 1m = 6.9px
+60 mph = 96.6 kph = 26.83 m/s = 186 px/s = 5.8 car-lengths per second.  At 30fps, that's 1/5 car-length per frame.
+

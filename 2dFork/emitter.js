@@ -10,6 +10,7 @@ function Emitter() {
 	this.e = null;
 	this.carParticles = [];
 	this._num = -1;
+	this.nearestNode = null;
 	
 	this.constructor = function() {
 		this.draw();
@@ -20,7 +21,8 @@ function Emitter() {
 		if (!this.canEmit()) return;
 		this._num++;
 		var cp = new CarParticle();
-		cp.constructor(this._num, this.x, this.y, this.d, this.v);
+		cp.constructor(this._num, this.x, this.y, this.d, this.v, this.nearestNode);
+		
 		this.carParticles.push(cp);
 		$("#spanAlive").text(this.carParticles.length + " driving");
 	}
@@ -81,8 +83,8 @@ function Emitter() {
 	this.render = function() {
 		var d = Math.round(this.d);
 		d = d + 45 - 180;
-		$(this.e).css("left", Math.round(this.x) - 25 + "px") //-25 for half-width of emitter
-            .css("top", Math.round(this.y) - 25 + "px") //-25 for half-height of emitter
+		$(this.e).css("left", Math.round(this.x) - 30 + "px") //-25 for half-width of emitter
+            .css("top", Math.round(this.y) - 30 + "px") //-25 for half-height of emitter
 			.css("transform", "rotate(" + d + "deg)");
 	}
 }
@@ -95,9 +97,9 @@ function CarParticle() {
 		alert(i);
 	}
 	
-	this.constructor = function(i, x, y, d, v) {
+	this.constructor = function(i, x, y, d, v, t) {
 		this.car = new Car();
-		this.car.constructor(i, x, y, d, v);
+		this.car.constructor(i, x, y, d, v, t);
 		this.createdTime = new Date();
 	}
 	

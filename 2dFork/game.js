@@ -1,170 +1,11 @@
 //globals.js before this
 //emitter.js before this
 //car.js before this
+//road.js before this
 
-function generateRoadPath() {
-		var w = $(window).width();
-		var h = $(window).height();
-		for (var i = 0; i < h * 2; i += 30) {
-			var x = Math.sin(-i / 80) * 300 + w / 2 - 3;
-			var y = i - 3;
-			if (i > 0) roadPath.push({ x: x, y: y });
-		}
-}
-
-function drawRoad() {
-	for (var i = 0; i < roadPath.length; i++) {
-		var e = "<div class='roadDot'></div>";
-        e = $("#road").append(e).find("DIV.roadDot:last-child");
-		$(e).css("left", Math.round(roadPath[i].x))
-            .css("top", Math.round(roadPath[i].y));
-	}
-}
-
-function addVirtualRoadNodes() {
-    //Add more hinting for the cars, since I may have defined the roads simplistically (distant nodes).
-    //Algorithm here just subdivides in half.  Repeat until satisfied.
-    //TODO:  Not quite working on joins
-    const C_maxDist = 70; //pixels
-    var didSubdivide = false;
-    roadNetwork.roads.forEach(r => {
-        var nodeCopy = [];
-        r.nodes.forEach((n, i) => {
-            if (i > 0 || n.joins != undefined) { //Skip first node if not joining
-                var nodePrev = {};
-                if (i == 0)
-                    nodePrev = roadNetwork.roads
-                        .find(x => x.id == n.joins.roadId).nodes
-                        .find(x => x.id == n.joins.nodeId);
-                else
-                    nodePrev = r.nodes[i - 1];
-                var h = Math.hypot((nodePrev.x - n.x), (nodePrev.y - n.y));
-                if (h > C_maxDist) {
-                    var newNode = {
-                        x: (nodePrev.x + n.x) / 2,
-                        y: (nodePrev.y + n.y) / 2,
-                        isVirtual: true
-                    };
-                    if (i == 0) {
-                        newNode.joins = structuredClone(n.joins);
-                        delete n.joins;
-                    }
-                    nodeCopy.push(newNode);
-                    didSubdivide = true;
-                }
-            }
-            nodeCopy.push(structuredClone(n)); //Copy original nodes
-        });
-        if (r.nodes[r.nodes.length - 1].joins != undefined) {
-            //Subdivide connector to next road
-            var n = r.nodes[r.nodes.length - 1];
-            var nextRoadId = n.joins.roadId;
-            var nextNodeId = n.joins.nodeId;
-            var nodeNext = roadNetwork.roads.find(x => x.id == nextRoadId).nodes.find(x => x.id == nextNodeId);
-            var h = Math.hypot((nodeNext.x - n.x), (nodeNext.y - n.y));
-            if (h > C_maxDist) {
-                var newNode = {
-                    x: (nodeNext.x + n.x) / 2,
-                    y: (nodeNext.y + n.y) / 2,
-                    isVirtual: true,
-                    joins: structuredClone(n.joins)
-                };
-                delete n.joins;
-                nodeCopy.push(newNode);
-                didSubdivide = true;
-            }
-        }
-        r.nodes = nodeCopy;
-    });
-    if (didSubdivide) addVirtualRoadNodes(); //Run until all road nodes are sufficiently spaced
-}
-
-function renderRoad() {
-    var svgBuffer = document.createElement("SVG");
-    var svgMain = document.createElement("SVG");
-    svgBuffer.setAttribute("class", "buffer");
-
-    //Draw each road in network
-    roadNetwork.roads.forEach(r => {
-        //Need to make this:
-        //<path d="M 32 0 L 64 64 L 32 64 L 64 128" stroke="black" fill="transparent" />
-        var svgLineData = "M";
-        r.nodes.forEach((n, i) => {
-            if (i > 0) svgLineData += " L";
-            svgLineData += " " + n.x + " " + n.y;
-            if (n.joins != undefined) {
-                var road = roadNetwork.roads.find(x => n.joins.roadId == x.id);
-                var node = road.nodes.find(x => n.joins.nodeId == x.id);
-                if (i == 0) {
-                    //Add to beginning of road
-                    svgLineData = "M" + node.x + " " + node.y + " L " + n.x + " " + n.y;
-                } else if (i == r.nodes.length - 1) {
-                    //Add to end of road
-                    svgLineData += " L " + node.x + " " + node.y;
-                }
-            }
-        });
-        var pathElem = document.createElement("PATH");
-        pathElem.setAttribute("d", svgLineData);
-        pathElem.setAttribute("stroke", r.color);
-        pathElem.setAttribute("title", r.comment);
-        svgMain.appendChild(pathElem);
-
-        //At bottom (under the roads and dots), draw the road width
-        var bufferElem = document.createElement("PATH");
-        bufferElem.setAttribute("d", svgLineData);
-        svgBuffer.appendChild(bufferElem);
-    });
-
-    //Draw dot for each node (overtop the lines)
-    roadNetwork.roads.forEach(r => {
-        var foundFirstNonVirtualNode = false;
-        r.nodes.forEach((n, i) => {
-            var dotElem = document.createElement("CIRCLE");
-            dotElem.setAttribute("cx", n.x);
-            dotElem.setAttribute("cy", n.y);
-            var r = 8;
-            if (n.isVirtual != undefined) r = 3;
-            dotElem.setAttribute("r", r);
-            if (!foundFirstNonVirtualNode && n.isVirtual == undefined) {
-                dotElem.classList.add("firstnode");
-                foundFirstNonVirtualNode = true;
-            }
-            if (n.isVirtual != undefined) dotElem.classList.add("virtual");
-            svgMain.appendChild(dotElem);
-        });
-    });
-
-    document.getElementById("roadNetwork").innerHTML = 
-        svgMain.outerHTML + svgBuffer.outerHTML; //Could not get this to render with append
-}
-
-function getNode(roadId, nodeId) {
-    return roadNetwork.roads.find(x => x.id == roadId).nodes.find(x => x.id == nodeId);
-}
-
-function getNextNode(roadId, nodeId) {
-    var road = roadNetwork.roads.find(x => x.id == roadId);
-    var node = getNode(roadId, nodeId);
-    var nodeIx = road.nodes.findIndex(x => x.id == nodeId);
-    if (nodeIx < road.nodes.length - 1)
-        return road.nodes[nodeIx + 1];
-    if (node.join == undefined) return null; //Dead-end
-    return getNode(node.join.roadId, node.join.nodeId);
-}
-
-function getPositionBehindNode(roadId, nodeId, distance) {
-    //Useful for approaching a node or placing the emitter
-    var node = getNode(roadId, nodeId);
-    var nextNode = getNextNode(roadId, nodeId);
-    var dir = Math.atan2(node.y - nextNode.y, node.x - nextNode.x);
-    var newX = Math.cos(dir) * distance + node.x;
-    var newY = Math.sin(dir) * distance + node.y;
-    return { x: newX, y: newY, d: dir * 180 / Math.PI - 180 };
-}
-
-function putEmitterBehind(roadId, nodeId, distance) {
-    var emitterPos = getPositionBehindNode(roadId, nodeId, distance);
+function putEmitterBehind(targetNode, distance) {
+    var emitterPos = rn.getPositionBehindNode(targetNode, distance);
+    if (emitterPos == null) { console.log("Can't place emitter"); return; }
     emitter.x = emitterPos.x;
     emitter.y = emitterPos.y;
     emitter.d = emitterPos.d;
@@ -172,54 +13,44 @@ function putEmitterBehind(roadId, nodeId, distance) {
 }
 
 function init() {
-	//Init emitter
-	emitter = new Emitter();
-	emitter.constructor();
-    if (typeof(roadNetwork.roads) === "undefined") {
-        //v4.1
-	    generateRoadPath();
-	    drawRoad();
-    } else {
-        //v4.2
-        addVirtualRoadNodes();
-        renderRoad();
-        emitter.TryEmit();
-    }
+    //Set version
+    if (window.location.href.indexOf("index.html") > -1) version = "4.1";
+    if (window.location.href.indexOf("road-test.html") > -1) version = "4.2";
+    if (window.location.href.indexOf("interactive.html") > -1) version = "4.3";
     
-    return;
-
-    //Init cars
-    var h = $(window).height();
-    var w = $(window).width();
-    for (var i = numCars; i < max; i++) {
-        var e = "<div class='car'>" + i + "</div>";
-        $("#cars").append(e);
-        var c = new Car();
-        c.id = i;
-        c.e = $(".car:last-child");
-        $(c.e).click(car_click);
-        c.v = Math.random() * 150 + 20;
-        c.maxV = c.v;
-        c.x = Math.random() * w * 2 / 3 + w / 6;
-        c.y = Math.random() * h * 2 / 3 + h / 6;
-        c.d = Math.random() * 360 - 180;
-        c.dRate = Math.random() * 40 - 20;
-        //$(c.e).css("background-color", c.color);
-        if (i < 100) $(c.e).css("background-color", "#88f").css("z-index", "1");
-        if (i < 10) $(c.e).css("background-color", "#8f8").css("z-index", "2");
-        if (i < 1) $(c.e).css("background-color", "white").css("z-index", "3");
-
-        cars.push(c);
+	//Init road network
+    rn = new RoadNetwork();
+    if (version == "4.1") {
+        rn.generateRoad("sine");
+        rn.render();
+        emitter = new Emitter();
+        emitter.constructor();
+        emitter.nearestNode = rn.roads[0].nodes[0];
+    } else if (version == "4.2") {
+        rn.loadNetwork(roadNetworkData);
+        rn.render();
+        emitter = new Emitter();
+        emitter.constructor();
+        emitter.nearestNode = rn.roads[0].nodes[0];
+        putEmitterBehind(emitter.nearestNode, 64);
+    } else if (version == "4.3") {
+        rn.generateRoad("circle", 16);
+        rn.render();
+        emitter = new Emitter();
+        emitter.constructor();
+        emitter.nearestNode = rn.nodes[0];
+        putEmitterBehind(emitter.nearestNode, 256);
+        window.addEventListener("mousemove", function(e) {
+            window.mouseX = e.clientX;
+            window.mouseY = e.clientY;
+        });
     }
-    numCars = max;
-    $("#btnAdd").html("Add " + max + " cars");
 }
 
 //Startup
 $(function() {
     init();
-    if (typeof(roadNetwork.roads) === "undefined") {
-        //v4.1
+    if (version == "4.1") {
         $("#slRate").on("input change", changeRate);
 	    $("#slVelo").on("input change", changeVelo);
 	    $("#slDir").on("input change", changeDir);
@@ -229,10 +60,10 @@ $(function() {
 	    lastTime = Date.now();
         step();
     } else {
-        //v4.2
-        putEmitterBehind(1, 1, 60); //roadId=6 for the off-screen-starting road
+        //v4.2 or v4.3
+        //putEmitterBehind(emitter.nearestRoad.roadId, emitter.nearestRoad.nodeId, 60);
         emitter.rate = 20 * 1000; //milliseconds
-        step();
+        //step();
     }
 	
 	$("IMG[alt='www.000webhost.com']").closest("DIV").remove();
@@ -278,11 +109,12 @@ function simulate(delta) {
         if (roadNetwork.roads == undefined) {
 		    if (!pause) cp.car.Simulate(delta, roadPath);
         } else {
-            if (!pause) cp.car.Simulate(delta, roadNetwork.roads[0].nodes);
+            if (!pause) cp.car.Simulate(delta, roadNetwork);
         }
 		cp.car.Render();
-		debug += formatSteeringNum(cp.car.dTarget, cp.car.id);
+        debug += formatSteeringNum(cp.car.dTarget, cp.car.id);
 	});
+    debug += "<br>Mouse: (" + window.mouseX + ", " + window.mouseY + ")";
 	$("#debug").html(debug);
 	
 	emitter.cullAll();
@@ -336,6 +168,7 @@ function simulate(delta) {
 }
 
 function formatSteeringNum(n, i) {
+    if (typeof(n) == "undefined" || n == null) n = 0;
 	//Limit number
 	if (n > 99) n = 99;
 	if (n < -99) n = -99;
@@ -410,11 +243,6 @@ function carHasNeighbor(car, map) {
         if (map[i][0] == id || map[i][1] == id) return true;
     }
     return false;
-}
-
-function add() {
-    max *= 2;
-    init();
 }
 
 function pauseSim() {

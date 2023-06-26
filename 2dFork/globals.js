@@ -1,4 +1,4 @@
-var fps = 60;
+var fps = 30;
 var max = 32;
 var numCars = 0;
 var lastTime = null;

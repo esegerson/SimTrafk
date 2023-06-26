@@ -39,7 +39,7 @@ function Driver() {
 
 function Car() { 
     //Methods
-	this.constructor = function(i, x, y, d, v) {
+	this.constructor = function(i, x, y, d, v, curTarg) {
         //i = ID, x,y = position coordinates, d = direction (degrees), v = velocity
 		var el = $("<div class='car'>" + i + "</div>");
         this.e = $("#cars").append(el).find(".car:last-child");
@@ -52,6 +52,7 @@ function Car() {
         this.y = y + Math.random() * 6 - 3 + 8; //+8 for unknown reasons except it lines up the car with the emitter pointer
         this.d = d + Math.random() * 4 - 2;
         this.dRate = 0;
+        this.target = curTarg;
         //$(this.e).css("background-color", c.color);
         if (i < 100) $(this.e).css("background-color", "#88f").css("z-index", "1");
         if (i < 10) $(this.e).css("background-color", "#8f8").css("z-index", "2");
@@ -83,22 +84,26 @@ function Car() {
     };
 
     this.Decelerate = function(power, delta) {
-        this.v -= this.maxDecel * power * delta;
+        this.v -= this.maxDecel() * power * delta;
     };
 	
-	this.Simulate = function(delta, road) {
+	this.Simulate = function(delta) {
         //delta = time since last simulation step
-		this.target = this.GetTarget(road); //This will change the target down the road
+        
+		this.target = this.GetTarget(); //This will change the target down the road
 		this.dTarget = this.GetTargetAngle(); //Ranges from -180 to 180 with 0 pointing "forward" and -90 = "left side"
+
+        if (this.target != null) {
+		    this.TurnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
+		    //this.dRate += 0.01 * delta;
+
+            //this.Decelerate(1, delta);
+
+            this.d += this.dRate * (this.v / 50) * (delta / 1000);
+            if (this.d < 0) this.d += 360;
+            if (this.d > 360) this.d -= 360;
+        }		
 		
-		this.TurnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
-		//this.dRate += 0.01 * delta;
-		
-		
-		
-		this.d += this.dRate * (this.v / 50) * (delta / 1000);
-        if (this.d < 0) this.d += 360;
-        if (this.d > 360) this.d -= 360;
         this.x += Math.cos(this.d * Math.PI / 180) * this.v * delta / 1000;
         this.y += Math.sin(this.d * Math.PI / 180) * this.v * delta / 1000;
 	}
@@ -106,6 +111,7 @@ function Car() {
 	this.GetTargetAngle = function() {
         //Return angle in degrees ranging from -180 to 180
         //with 0 pointing "forward", -90 pointing "left" and 90 pointing "right".
+        if (this.target == null) return null;
 		var deg = angleFromCoords(this.x, this.y, this.target.x, this.target.y);
 
 		//Convert to local (so 0deg faces "forward")
@@ -117,7 +123,7 @@ function Car() {
 	}
 	
 	this.Render = function() {
-        if (this.target == undefined) return; //May be if in slow mode
+        //if (this.target == undefined) return; //May be if in slow mode
 		$(this.e).css("left", Math.round(this.x) - 16) //-16 for half-length of car
             .css("top", Math.round(this.y) - 8) //-8 for half-width of car
             .css("transform", "rotate(" + Math.round(this.d) + "deg)")
@@ -125,28 +131,30 @@ function Car() {
         if (this.maxV > 200) $(this.e).addClass("hotrod");
 		
 		//Draw extra SVG info
-		var x1 = Math.round(this.x);
-		var y1 = Math.round(this.y);
-		var x2 = Math.round(this.target.x) + 4;
-		var y2 = Math.round(this.target.y) + 4;
-		
-        var d1 = -this.d - 90; //Start of arc is in front of car
-		var d2 = -this.d - this.dTarget - 90; //End of arc is at red line to target
-		
-		var target = "<line class='targ' x1='" + x1 + "' y1='" + y1 + "' x2='" + x2 + "' y2='" + y2 + "' />";
-		var steeringTarget = "<path class='steer' d='" + describeArc(x1, y1, 40, d1, d2) + "' />";
-		var svg = "<svg id='svg" + this.id + "'>" + target + steeringTarget + "</svg>";
-		if ($("BODY > svg#svg" + this.id).length == 0)
-			$("BODY").append(svg);
-		else
-			$("BODY > svg#svg" + this.id).replaceWith(svg);
+        if (this.target != null) {
+            var x1 = Math.round(this.x);
+            var y1 = Math.round(this.y);
+            var x2 = Math.round(this.target.x);
+            var y2 = Math.round(this.target.y);
+            
+            var d1 = -this.d - 90; //Start of arc is in front of car
+            var d2 = -this.d - this.dTarget - 90; //End of arc is at red line to target
+            
+            var target = "<line class='targ' x1='" + x1 + "' y1='" + y1 + "' x2='" + x2 + "' y2='" + y2 + "' />";
+            var steeringTarget = "<path class='steer' d='" + describeArc(x1, y1, 40, d1, d2) + "' />";
+            var svg = "<svg id='svg" + this.id + "' class='cardebug'>" + target + steeringTarget + "</svg>";
+            if ($("BODY > svg#svg" + this.id).length == 0)
+                $("BODY").append(svg);
+            else
+                $("BODY > svg#svg" + this.id).replaceWith(svg);
+        }
 		
         //Add some text debugging data
         if ($("#dbg" + this.id).length == 0)
 			$("BODY > DIV#cars").append("<div id='dbg" + this.id + "' class='carExtra'></div>");
 		var debugText = "<b>" + this.driver.name + "</b>"
             + "<br>d=" + this.d.toFixed(0) 
-            + "<br>dTarget=" + this.dTarget.toFixed(0)
+            + "<br>dTarget=" + (this.dTarget == null ? "" : this.dTarget.toFixed(0))
             + "<br>dRate=" + this.dRate.toFixed(0);
         $("#dbg" + this.id).html(debugText).css("top", this.y + 20).css("left", this.x + 20);
 
@@ -176,14 +184,17 @@ function Car() {
         }
 	}
 
-	this.GetTarget = function(road) {
-		//road is an array of {x,y}
-		var curTarget = road[this.curRoadTargetIndex];
-		var dist = this.DistanceTo(curTarget.x, curTarget.y);
-		var lookAheadDist = this.v / 2;
-		if (lookAheadDist < 30) lookAheadDist = 30;
-		if (dist < lookAheadDist && this.curRoadTargetIndex < road.length - 1) this.curRoadTargetIndex++;
-		return road[this.curRoadTargetIndex];
+    this.GetTarget = function() {
+        if (this.target == null) return null;
+        var dist = this.DistanceTo(this.target.x, this.target.y);
+        var lookAheadDist = this.v / 2;
+        if (lookAheadDist < 30) lookAheadDist = 30;
+        if (dist < lookAheadDist) {
+            //Get next node (which may be on another road)
+            var i = Math.floor(Math.random() * this.target.nextList.length);
+            this.target = this.target.nextList[i];
+        }
+        return this.target;
 	}
 	
 	this.DistanceTo = function(x, y) {
@@ -281,7 +292,7 @@ function Car() {
     this.brakeMultiplier = Math.random() * 0.4 - 0.2; //Plus or minus 20% (variances of brakes)
     this.maxDecel = function() { return this.weight / (this.brakepower * this.brakeMultiplier); };
     this.turnRadius = Math.floor(Math.random() * 10 + 1); //1 for motorcycles, 10 for 18 wheelers
-	this.curRoadTargetIndex = 0;
+	this.target = null;
     
     //Rules
     this.maxV = 0;
