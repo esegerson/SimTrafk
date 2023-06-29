@@ -9,10 +9,10 @@ BODY {
     font-family: 'Play', sans-serif;
     font-size: 16px;
     background-image: 
-        url('../images/grid-segment-0008.png'), 
-        url('../images/grid-segment-0064.png'), 
-        url('../images/grid-segment-0512.png'), 
-        url('../images/grid-segment-4096.png');
+        url('../../images/grid-segment-0008.png'), 
+        url('../../images/grid-segment-0064.png'), 
+        url('../../images/grid-segment-0512.png'), 
+        url('../../images/grid-segment-4096.png');
     image-rendering: pixelated;
 }
 NOSCRIPT > DIV {
