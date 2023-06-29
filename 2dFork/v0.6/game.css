@@ -1,0 +1,117 @@
+#cars { pointer-events: none; }
+.car {
+    box-sizing: border-box;
+    position: absolute;
+    background-color: #ff8080;
+    width: 32px;
+    height: 16px;
+    top: -100px;
+    border-radius: 3px 8px 8px 3px;
+    border: solid 1px black;
+    font-size: 11px;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1.4em;
+    font-family: sans-serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: pointer;
+}
+.brake {
+    border-left: solid 4px red;
+}
+.accel {
+    border-right: solid 4px #0f0;
+}
+.dead {
+    background-color: #888 !important;
+}
+.hotrod {
+    text-shadow: 0 0 2px red, 0 0 2px red;
+}
+
+.emitter {
+	border: solid 5px #bbb;
+	background-color: #ccc;
+	border-radius: 50px 50px 50px 0;
+	width: 50px;
+	height: 50px;
+	position: absolute;
+	z-index: 4;
+}
+
+.roadDot {
+	border: solid 1px green;
+	background-color: yellow;
+	border-radius: 10px;
+	width: 6px;
+	height: 6px;
+	position: absolute;
+}
+
+INPUT[type=range] { width: 100px; position: relative; top: 7px; }
+
+#debug { font-size: 80%; font-family: sans-serif; }
+#debug > DIV { display: inline-block; text-align: center; }
+#debug > DIV > SPAN { border-radius: 0 20px 20px 20px; width: 20px; height: 20px; display: block; background-color: #999; margin-left: 11px; }
+#debug > DIV > SPAN > SPAN { display: block; font-family: sans-serif; font-size: 80%; }
+
+.carExtra {
+	position: absolute;
+	border: solid 1px #888;
+	background-color: rgba(128, 128, 128, 0.3);
+	width: 100px;
+	height: 100px;
+	font-family: sans-serif;
+	font-size: 10px;
+	color: #444;
+	border-radius: 3px;
+}
+
+svg {
+	width: 100vw;
+	height: 100vh;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+svg > line {
+	stroke: rgba(255, 0, 0, 0.2);
+	stroke-width: 1px;
+}
+
+svg > path.steer {
+	stroke: rgb(0, 0, 255);
+	stroke-width: 1px;
+	fill: none;
+}
+
+svg > circle.turnCircle { stroke: rgba(0, 0, 0, 0.1); fill: none; stroke-width: 2; }
+
+DIV#roadNetwork {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+}
+
+DIV#roadNetwork > svg > path { fill: transparent; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+DIV#roadNetwork > svg.buffer { opacity: 0.1; pointer-events: none; }
+DIV#roadNetwork > svg.buffer > path { stroke: black; stroke-width: 40; }
+DIV#roadNetwork > svg > circle { fill: transparent; stroke: black; stroke-width: 2px; }
+DIV#roadNetwork > svg > circle.firstnode { fill: black; stroke: none; }
+DIV#roadNetwork > svg > circle.selected { fill: white; stroke: white; stroke-width: 40px; }
+DIV#roadNetwork > svg > circle.virtual { fill: rgba(0,0,0,0.5); stroke: none; filter: drop-shadow(0 0 2px white) drop-shadow(0 0 2px white); }
+DIV#roadNetwork > svg > circle.firstnode.virtual { fill: black; stroke: none; }
+#beziers circle.bezier { fill: green; }
+#beziers circle.bezier.next { fill: purple; }
+#beziers path.bezier { fill: transparent; stroke-width: 1px; stroke: blue; }
+.draggable { cursor: move; }
+.cardebug { pointer-events: none; }
+#bezsubdiv circle { fill: orange; }

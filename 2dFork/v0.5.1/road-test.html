@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>SimTrafk Road Test</title>
+    <meta name="description" content="Do you think roads are poorly designed?  Do you think you can do better?
+        Prove it with this fun HTML5 game!">
+    <meta name="author" content="Eric Segerson">
+    <meta property="og:title" content="SimTrafk: Fun Online Traffic Game">
+    <!--<meta property="og:image" content="social_image.png">-->
+    <meta property="og:description" content="Do you think roads are poorly designed?  Do you think you can do better?
+        Prove it with this fun HTML5 game!">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=0" /> <!--320-->
+    <!-- <meta name="apple-mobile-web-app-capable" content="yes" /> -->
+    <link href='https://fonts.googleapis.com/css?family=Play' rel="stylesheet">
+    <link href="page.css" rel="stylesheet">
+    <link href="game.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="globals.js"></script>
+    <script src="emitter.js"></script>
+    <script src="car.js"></script>
+    <script src="game.js"></script>
+    <script src="road.js"></script>
+    <script src="road1.js"></script>
+    <style>
+        .message {
+            transform: rotate(0deg);
+            transition: transform 1s;
+            transform-origin: top right;
+        }
+
+            .message[data-hide] #btnHide {
+                top: -12px;
+            }
+
+            .message #btnHide {
+                transition: top 1s;
+            }
+    </style>
+    <script>
+        jQuery.fn.rotate = function () {
+            var degrees = "0";
+            if (!$(this).is("[data-hide]")) {
+                degrees = "-90";
+                $(this).attr("data-hide", "");
+                $("#btnHide").text("V");
+            } else {
+                $(this).removeAttr("data-hide");
+                $("#btnHide").text("X");
+            }
+            $(this).css({ 'transform': 'rotate(' + degrees + 'deg)' });
+            return $(this);
+        };
+    </script>
+</head>
+<body>
+    <div class="message">
+        <h1>Experiment #0.5.2</h1>
+        <p>Road Test.  Read roads from file, render on screen, 
+            see if cars will follow the roads, cull cars that drive off-screen,
+            add cars to roads that enter the screen.  Emitter is places "behind" a node.
+            All roads are single-lane and one-way.  Roads connect to each other.</p>
+        <p>Key: Circles are road nodes. 
+            Small dots are virtual (computed) road nodes.  
+            Black dots are road start nodes. <br>
+            <b style="color: red;">Red</b> road is three roads connected, one-way clockwise. <br>
+            <b style="color: orange;">Orange</b> road is a shortcut. <br>
+            <b style="color: brown;">Brown</b> is an out-of-bounds exit (culler).<br>
+            <b style="color: green;">Green</b> is an out-of-bounds entrance (emitter).<br>
+            <b style="color: blue;">Blue</b> is an in-bounds dead-end (cars should stop).<br>
+            <b style="color: purple;">Purple</b> is a self-connecting cul-de-sac (effective dead-end with one-way).
+            Gray is road bounds.
+        </p>
+        <p>At splits in the road, cars choose 50/50 which way to go.</p>
+        <p>This experiment was done at the same time as 0.5.3 and 0.5.4 and the fruits of those experiments were back-ported to this experiment.  Click "Toggle Beziers" to see and drag & drop the road to change.</p>
+        <p>Next experiment:  work on curving the roads by calculating the tangent line and subdividing with bezier curves.</p>
+        
+        <span id="spanAlive"></span>
+        <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
+        <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
+        <button id="btnSlow" onclick="slowSim()">Slow Sim</button>
+        <button id="btnStop" onclick="stop = true">Stop Sim</button>
+		<button id="btnSteering" onclick="toggleSteering()">Show Steering</button>
+        <button id="btnToggleBez" onclick="toggleBez()">Toggle Beziers</button>
+		<button id="btnHide" onclick="$(this).parent().rotate()" class="close">X</button><br>
+		<!-- <div>
+			Rate: <input id="slRate" type="range" min="200" max="20000" value="10000" step="200" /><span id="lblSlRate"></span><br>
+			Velo: <input id="slVelo" type="range" min="10" max="500" value="100" step="10" /><span id="lblSlVelo"></span><br>
+			Dir: <input id="slDir" type="range" min="-180" max="180" value="140" step="10" /><span id="lblSlDir"></span>
+		</div> -->
+		<div id="debug" style="display: none;"></div>
+        <p>Other versions: 
+            <a href="../v0.1/index.html">0.1</a>,
+            <a href="../v0.2/index.html">0.2</a>,
+            <a href="../v0.3/index.html">0.3</a>,
+            <a href="../v0.4/index.html">0.4</a>,
+            <a href="../v0.5.0/index.html">0.5.0</a>,
+            <a href="../v0.5.1/index.html">0.5.1</a>,
+            0.5.2,
+            <a href="../v0.5.1/interactive.html">0.5.3</a>,
+            <a href="../v0.5.1/bezier.html">0.5.4</a>,
+            <a href="../v0.6/index.html">0.6</a>
+        </p>
+    </div>
+    <!--googleoff: all-->
+    <noindex class="robots-nocontent">
+        <noscript>
+            <div>
+                <h3>JavaScript is required</h3>
+                <h4>You must enable JavaScript on this page to play this game.</h4>
+                <p>Don't worry, you're not being tracked!  Read the <a href="privacy.html">privacy policy</a>.</p>
+            </div>
+        </noscript>
+        <div class="nostyle">
+            <h3>Styles are required</h3>
+            <p>Styles are required for this game to function correctly.  Please enable them.</p>
+        </div>
+    </noindex>
+    <!--googleon: all-->
+	<div id="road"></div>
+	<div id="cars"></div>
+</body>
+</html>

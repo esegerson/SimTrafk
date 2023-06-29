@@ -54,7 +54,7 @@
                     "color": "red",
                     "name": "Bezier Test",
                     "nodes": [
-                        { "id": 1, "x": 896, "y": 512 },
+                        { "id": 1, "x": 128, "y": 512 },
                         { "id": 2, "x": 512, "y": 215, "curve": 100 },
                         { "id": 3, "x": 784, "y": 784 }
                     ]
@@ -68,6 +68,7 @@
             window.btnAngCW2.addEventListener("click", function() { rotateRoad(45) });
             window.btnAngCCW2.addEventListener("click", function() { rotateRoad(-45) });
             version = "4.4";
+            bezMode = 2;
             rn = new RoadNetwork();
             rn.loadNetwork(roadNetworkData);
             rn.render();
@@ -95,7 +96,19 @@
 <body>
     <div class="message">
         <h1>Experiment #4.4</h1>
-        <p>Focused on getting beziers right.</p>
+        <p>Focused on getting beziers right.  
+            Had a hard time calculating the tangent angle 
+            and getting the prev and next nodes to stay on the correct side in all situations and orientations.
+            This simplified experiment helped focus on those problems.
+            Had to look up the <a href="https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Cubic_B%C3%A9zier_curves" target="_blank" title="Wikipedia">formula</a> for bezier curves.</p>
+        <p>Black circle is start of road.</p>
+        <p>Tangent line (<span style="color:blue">blue</span>) rendered with 
+            <span style="color: green">green</span> (prev) and
+            <span style="color: purple">purple</span> (next)
+            dots signifying the strength of the "curve", defaulting to 100px here.</p>
+        <p>Bezier curves rendered with <span style="color: orange">orange</span> dots.</p>
+        <p>Drag & drop circles to adjust, or press buttons below.</p>
+        <p>Next experiment:  readjust road network to utilize bezier points. Render road so it curves with bezier nodes. Refactor and clean-up code. Hopefully work on the driver simulator more (avoid collisions).</p>
         <!-- <span id="spanAlive"></span> -->
         <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
         <!-- <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
@@ -116,16 +129,16 @@
 		</div>
 		<div id="debug" style="display: none;"></div>
         <p>Other versions: 
-            <a href="v1/index.html">1</a>,
-            <a href="v2/index.html">2</a>,
-            <a href="v3/index.html">3</a>,
-            <a href="v3.1/index.html">3.1</a>,
-            <a href="v4/index.html">4.0</a>,
-            <a href="index.html">4.1</a>,
-            <a href="road-test.html">4.2</a>,
-            <a href="interactive.html">4.3</a>,
-            4.4<!--,
-            <a href="../index.html">5.0</a>-->
+            <a href="../v0.1/index.html">0.1</a>,
+            <a href="../v0.2/index.html">0.2</a>,
+            <a href="../v0.3/index.html">0.3</a>,
+            <a href="../v0.4/index.html">0.4</a>,
+            <a href="../v0.5.0/index.html">0.5.0</a>,
+            <a href="../v0.5.1/index.html">0.5.1</a>,
+            <a href="../v0.5.1/road-test.html">0.5.2</a>,
+            <a href="../v0.5.1/interactive.html">0.5.3</a>,
+            0.5.4,
+            <a href="../v0.6/index.html">0.6</a>
         </p>
     </div>
     <!--googleoff: all-->

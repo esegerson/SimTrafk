@@ -13,6 +13,10 @@ Average length of cars by type:
     Sm. Pickup  4.981
     Lg. Pickup  5.614
 
-If we call our car a mid-sized car, then 32px = 4.62m, so 1px = 0.144m and 1m = 6.9px
+If we call our car a mid-sized car, then 32px = 4.62m, so 1px = 0.144m and 1m = 6.94px
 60 mph = 96.6 kph = 26.83 m/s = 186 px/s = 5.8 car-lengths per second.  At 30fps, that's 1/5 car-length per frame.
+
+Conversion:  
+    1px = 0.144m
+    1m = 6.94px
 

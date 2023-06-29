@@ -127,18 +127,62 @@ function RoadNetwork() {
         });    
     }
 
-    this.renderSimple = function() {
-        //For simple sine wave or circle
-        this.nodes.forEach(n => {
-            var e = "<div class='roadDot'></div>";
-            e = $("#road").append(e).find("DIV.roadDot:last-child");
-            $(e).css("left", Math.round(n.x - 4))
-                .css("top", Math.round(n.y - 4)); //-4 to center 8px-wide dot on coordinate
+    this.interpolateNetwork = function() {
+        let getBezierSubdivideNodes = function(p0, p1, p2, p3, numSubdivisions) {
+            /*  Formula for drawing bezier curves:
+                B(t) = (1 - t)^3 * P0 + 3 * (1-t)^2 * t * P1 + 3 * (1-t) * t^2 * P2 + t^3 * P3
+                where t is a fractional value along the length of the line (0 <= t <= 1).
+                P0 = start of line
+                P1 = first control point
+                P2 = second control point
+                P3 = end of line
+            */
+            let rv = [];
+            for (var t = 0; t < 1; t 
+                += 1 / numSubdivisions) {
+                rv.push({
+                    t: t,
+                    x: Math.pow(1 - t, 3) * p0.x + 3 * Math.pow(1 - t, 2) * t * p1.x + 3 * (1 - t) * Math.pow(t, 2) * p2.x + Math.pow(t, 3) * p3.x,
+                    y: Math.pow(1 - t, 3) * p0.y + 3 * Math.pow(1 - t, 2) * t * p1.y + 3 * (1 - t) * Math.pow(t, 2) * p2.y + Math.pow(t, 3) * p3.y
+                });
+            }
+            return rv;
+        }
+        
+        //Interpolate each road
+        rn.roads.forEach(r => {
+            //Interpolate each node in each road
+            r.nodes.forEach((n,i) => {
+                let newNodeList = [];
+                let prev = n.prevList[0];
+                let next = n.nextList[0];
+                if (prev != undefined && next != undefined) {
+                    let prevBez = prev.bezierPoints;
+                    let curBez = n.bezierPoints;
+                    let nextBez = next.bezierPoints;
+                    let bezNodes1 = getBezierSubdivideNodes(
+                        {x: prev.x, y: prev.y},
+                        {x: prevBez.next.x, y: prevBez.next.y},
+                        {x: curBez.prev.x, y: curBez.prev.y},
+                        {x: n.x, y: n.y},
+                        C_numBezierSubdivides
+                    );
+                    let bezNodes2 = getBezierSubdivideNodes(
+                        {x: n.x, y: n.y},
+                        {x: curBez.next.x, y: curBez.next.y},
+                        {x: nextBez.prev.x, y: nextBez.prev.y},
+                        {x: next.x, y: next.y},
+                        C_numBezierSubdivides
+                    );
+                    let i = 0;
+                    bezNodes1.concat(bezNodes2).forEach(b => {
+                        let newNode = new Node(r, n.id * 1000 + i, b.x, b.y, 0);
+                        newNodeList.push(newNode);
+                        i++;
+                    });
+                }
+            });
         });
-    }
-
-    this.getTangent = function (roadId, nodeId) {
-
     }
 
     this.addVirtualNodes = function() {
@@ -200,6 +244,16 @@ function RoadNetwork() {
         if (didSubdivide) addVirtualRoadNodes(); //Run until all road nodes are sufficiently spaced
     }
 
+    this.renderSimple = function() {
+        //For simple sine wave or circle (v4.0)
+        this.nodes.forEach(n => {
+            var e = "<div class='roadDot'></div>";
+            e = $("#road").append(e).find("DIV.roadDot:last-child");
+            $(e).css("left", Math.round(n.x - 4))
+                .css("top", Math.round(n.y - 4)); //-4 to center 8px-wide dot on coordinate
+        });
+    }
+
     this.render = function() {
         //Clear out whatever was there
         window.road.innerHTML = "";
@@ -241,7 +295,7 @@ function RoadNetwork() {
         //Draw the "curve" control points (for debugging)
         var svgBez = document.createElement("svg");
         svgBez.id = "beziers";
-        if (version != "4.1") {
+        if (version == "4.3" || version == "4.4") {
             var bpRadius = 5;
             this.nodes.forEach(n => {
                 var bp = n.bezierPoints; //Format:  { prev: {x,y}, next: {x,y} }
@@ -267,7 +321,7 @@ function RoadNetwork() {
         }
         var svgBezSubdiv = document.createElement("svg");
         svgBezSubdiv.id = "bezsubdiv";
-        if (version == "4.2" || version == "4.3" || version == "4.4") {
+        if (version == "4.3" || version == "4.4") {
             let bezNodes = beztest();
             let svgContents = "";
             bezNodes.forEach(b => {

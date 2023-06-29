@@ -49,6 +49,7 @@ function init() {
 
 //Startup
 $(function() {
+    return;
     init();
     if (version == "4.1") {
         $("#slRate").on("input change", changeRate);
@@ -59,8 +60,11 @@ $(function() {
 	    changeDir();
 	    lastTime = Date.now();
         step();
+    } else if (version == "4.2") {
+        emitter.rate = 20 * 1000; //milliseconds
+        step();
     } else {
-        //v4.2 or v4.3
+        //v4.3 or v4.4
         //putEmitterBehind(emitter.nearestRoad.roadId, emitter.nearestRoad.nodeId, 60);
         emitter.rate = 20 * 1000; //milliseconds
         //step();

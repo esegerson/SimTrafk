@@ -153,6 +153,7 @@ function Car() {
         if ($("#dbg" + this.id).length == 0)
 			$("BODY > DIV#cars").append("<div id='dbg" + this.id + "' class='carExtra'></div>");
 		var debugText = "<b>" + this.driver.name + "</b>"
+            + "<br>v=" + this.v.toFixed(0) + " (" + getMph(this.v) + " mph)"
             + "<br>d=" + this.d.toFixed(0) 
             + "<br>dTarget=" + (this.dTarget == null ? "" : this.dTarget.toFixed(0))
             + "<br>dRate=" + this.dRate.toFixed(0);

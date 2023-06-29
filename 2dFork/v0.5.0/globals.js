@@ -7,6 +7,7 @@ var decel = accel * 4;
 var pause = false; //Pause the simulation
 var slow = false; //Slow the simulation down by 1/1000 for debugging
 var stop = false; //Kills iteration of step()
+const C_scale = 0.144; //meters per pixel, see notes.txt
 
 var carType = { 
     Subcompact : 0,
@@ -74,3 +75,7 @@ var C_namesTop200F = ["Mary", "Helen", "Margaret", "Anna", "Ruth", "Elizabeth", 
 var roadPath = [];
 var roadNetwork = {};
 var emitter = {}; 
+
+let getMph = function(v) {
+    return Math.round(v * C_scale * 2.2369); //magic number converts m/s to mph
+}
