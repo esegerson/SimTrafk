@@ -1,71 +1,182 @@
 //globals.js before this
+//driver.js after this
 
-function Driver() {
-    //Methods
-    this.Accelerate = function(power, delta) {
-        this.curActivity = driverActivity.Accelerating;
-        this.Car.Accelerate(power, delta);
-    };
+sim.Car = class {
+    eCar; //DOM element representing the render of this car (the "shoe")
+    eDebug; //DOM element for debugging box
+    eSVG; //DOM element for SVG details
+    id;
+    v; //Velocity, in px/sec
+    maxV;
+    x;
+    y;
+    d; //Direction car is facing, in degrees.  0=right, 90=down
+    dRate;
+    target; //Reference to road network node, which has an (x,y)
+    driver; //Reference to the driver of the car
+    _createdTime;
 
-    this.Decelerate = function(power, delta) {
-        this.curActivity = driverActivity.Decelerating;
-        this.Car.Decelerate(power, delta);
-    };
-
-    //Properties
-    this.id = 0;
-    this.Car = null; //Pointer to parent object
-    this.isMale = Math.random() < 0.5;
-    this.name = this.isMale ? 
-        C_namesTop200M[Math.floor(Math.random() * C_namesTop200M.length)] : 
-        C_namesTop200F[Math.floor(Math.random() * C_namesTop200F.length)];
-    this.age = Math.floor(Math.random() * (100 - 15) + 15); //15-99
-    this.reaction = Math.floor(Math.random() * 10); //0 (computer-perfect) to 9 (incapacitated)
-    this.intelligence = Math.floor(Math.random() * 10); //0 (stupid) to 9 (computer-perfect genius)
-    this.aggressiveness = Math.floor(Math.random() * 10); //0 (timid, cowed) to 9 (fast accel/decel, tailgaiting, weaving, selfish, zero margin of error)
-    this.vision = Math.floor(Math.random() * 10); //0 (blind) to 9 (road segments distant)
-    this.pRubbernecker = Math.random(); //0 (never) to 1 (always), slows around accidents
-    this.pCellPhone = Math.random(); //0 (never) to 1 (always), periods of distracted driving
-    this.pSoccerMom = Math.random(); //0 (never) to 1 (total stereotype), changes agendas often, erratic behavior, different from aggressiveness
-    this.pHeartAttack = Math.random() * 0.001; //Never to rare, driver goes unresponsive (maintains speed, drifts)
-    
-    //Time-sensitive variables
-    this.isRubbernecking = false;
-    this.isUsingCellPhone = chance(this.pCellPhone);
-    this.isSoccerMom = chance(this.pSoccerMom);
-    this.isHavingHeartAttack = chance(this.pHeartAttack);
-    this.curActivity = driverActivity.Nothing;
-};
-
-function Car() { 
-    //Methods
-	this.constructor = function(i, x, y, d, v, curTarg) {
-        //i = ID, x,y = position coordinates, d = direction (degrees), v = velocity
-		var el = $("<div class='car'>" + i + "</div>");
-        this.e = $("#cars").append(el).find(".car:last-child");
-		this.id = i;
-        $(this.e).data("carId", i);
-		$(this.e).click(car_click);
-        this.v = v + Math.random() * v - v / 2;
-        this.maxV = this.v;
-        this.x = Math.random() * 6 + x - 3;
+    /**
+     * Initialize a car. x,y,d,v,curTarg set by emitter.
+     * @param {Driver} driver - Reference to driver of car
+     * @param {int} id - Unique numeric identifier of car
+     * @param {*} x - X position
+     * @param {*} y - Y position
+     * @param {*} d - direction, in degrees. 0=right, 90=down
+     * @param {*} v - velocity, in px/sec
+     * @param {*} curTarg - where to aim for, a reference to a road network node
+     */
+    constructor(driver, x, y, d, v, curTarg) {
+        this.driver = driver;
+        this.id = this.driver.id;
+        this.x = x + Math.random() * 6 - 3;
         this.y = y + Math.random() * 6 - 3 + 8; //+8 for unknown reasons except it lines up the car with the emitter pointer
         this.d = d + Math.random() * 4 - 2;
+        this.maxV = v + Math.random() * v - v / 2;
+        this.v = this.maxV; //Init going max speed
         this.dRate = 0;
         this.target = curTarg;
-        //$(this.e).css("background-color", c.color);
-        if (i < 100) $(this.e).css("background-color", "#88f").css("z-index", "1");
-        if (i < 10) $(this.e).css("background-color", "#8f8").css("z-index", "2");
-        if (i < 1) $(this.e).css("background-color", "white").css("z-index", "3");
+        this.ensureInDom(); //This initializes this.eCar, this.eDebug, and this.eSVG
+        if (this.id < 100) this.eCar.style.backgroundColor = "#88f"; //blue
+        if (this.id < 10) this.eCar.style.backgroundColor = "#8f8"; //green
+        if (this.id < 1) this.eCar.style.backgroundColor = "white"; //otherwise, default blue
+
+        //Other properties
+        this.color = this._pickRandomColor();
+        this.type = this._pickRandomCarType();
+        this.weight = sim.randomInt(sim.carData.C_weightSpreads[this.type].max, sim.carData.C_weightSpreads[this.type].min);
+        this.width = sim.carData.C_carSizes[this.type].width;
+        this.height = sim.carData.C_carSizes[this.type].height;
+        this.fuelLevel = sim.carData.C_defaultFuel;
+        this.horsepower = sim.carData.C_horsepower[this.type];
+        this.horseMultiplier = Math.random() * 0.4 - 0.2; //Plus or minus 20% (variances of engines)
+        this.maxAccel = function() { return this.weight / (this.horsepower * this.horseMultiplier); };
+        this.brakepower = this.horsepower * 1.5; //Can brake faster than can accelerate
+        this.brakeMultiplier = Math.random() * 0.4 - 0.2; //Plus or minus 20% (variances of brakes)
+        this.maxDecel = function() { return this.weight / (this.brakepower * this.brakeMultiplier); };
+        this.turnRadius = sim.randomInt(11, 1); //1 for motorcycles, 10 for 18 wheelers
+        this.coolDown = 0;
+        this.curAction = sim.carData.driverActivity.Nothing;
+        this._createdTime = new Date();
 	}
+
+    ensureInDom = function() {
+		if (sim.isNull(this.eCar)) {
+            //Build eCar and put in #carShoes
+			this.eCar = document.createElement("DIV");
+			this.eCar.classList.add("car");
+            this.eCar.setAttribute("data-id", this.id);
+            this.eCar.innerText = this.id;
+            this.eCar.title = this.driver.name;
+            // ? Add click event?
+			let c = document.getElementById("carShoes");
+			c.appendChild(this.eCar);
+
+            //Build eDebug and put in #carDebugBox
+            this.eDebug = document.createElement("DIV");
+            this.eDebug.classList.add("carDebug");
+            this.eDebug.setAttribute("data-id", this.id);
+            this.eDebug.innerHTML = "<b>" + this.driver.name + "</b>";
+            c = document.getElementById("carDebugBox");
+            c.appendChild(this.eDebug);
+
+            //Build eSVG and put in #carSVG
+            this.eSVG = document.createElement("svg");
+            this.eSVG.setAttribute("data-id", this.id);
+            c = document.getElementById("carSVG");
+            c.appendChild(this.eSVG);
+		}
+	}
+
+    /**
+     * Draw the car on screen.  Draws the "shoe", the debug box, and additional details with SVG
+     */
+	render = function() {
+        /*  Car rendering is done in several layers, from top to bottom:
+                1. Basic car rendering (the "shoe")
+                2. Debug box that follows the car (the dark-gray square)
+                3. Debug scalar vector graphics (red target line, blue turn arc, gray turn circle & centerpoint)
+        */
+
+        //1. Basic car rendering
+        this.eCar.style.left = Math.round(this.x) - 16 + "px"; //-16 for half-length of car
+        this.eCar.style.top = Math.round(this.y) - 8 + "px"; //-8 for half-width of car
+        this.eCar.style.transform = "rotate(" + Math.round(this.d) + "deg";
+        if (this.maxV > 200) this.e.classList.add("hotrod");
+
+		
+		//Draw extra SVG info
+        if (this.target != null) {
+            let x1 = Math.round(this.x);
+            let y1 = Math.round(this.y);
+            let x2 = Math.round(this.target.x);
+            let y2 = Math.round(this.target.y);
+            
+            let d1 = -this.d - 90; //Start of arc is in front of car
+            let d2 = -this.d - this.dTarget - 90; //End of arc is at red line to target
+            
+            let target = "<line class='targ' x1='" + x1 + "' y1='" + y1 + "' x2='" + x2 + "' y2='" + y2 + "' />";
+            let steeringTarget = "<path class='steer' d='" + describeArc(x1, y1, 40, d1, d2) + "' />";
+            let svg = "<svg id='svg" + this.id + "' class='cardebug'>" + target + steeringTarget + "</svg>";
+            this.eSVG.innerHTML = svg;
+        }
+		
+        //Add some text debugging data
+        let debugText = "<b>" + this.driver.name + "</b>"
+            + "<br>v=" + this.v.toFixed(0) + " (" + sim.getMph(this.v) + " mph)"
+            + "<br>d=" + this.d.toFixed(0) 
+            + "<br>dTarget=" + (this.dTarget == null ? "" : this.dTarget.toFixed(0))
+            + "<br>dRate=" + this.dRate.toFixed(0);
+        this.eDebug.innerHTML = debugText;
+        this.eDebug.style.left = this.x + 20 + "px";
+        this.eDebug.style.top = this.y + 20 + "px";
+
+        //Draw turn circle
+        //Turn circle is based on dRate.  
+        //dRate=0 is a straight line (infinite radius).  
+        //Don't draw circles with radius greater than 1000
+        //Circle center point will be somewhere along line +/-90deg from direction of car
+        //dRate < 0 = turn left, dRate > 0 = turn right
+        //Eyeball, dRate=30 = ~3 car lengths radius.  Car length = 32px
+        //If dRate=30 = r=50, then dRate=15 = r=100 and dRate=5 = r=300 and dRate=60 = r=25
+        //That matches the equation:  r=30*50/dRate
+        let dRateTest = this.dRate;
+        if (Math.abs(dRateTest) > 0.0001) {
+            let sign = Math.abs(dRateTest) / dRateTest;
+            const factor = 2865; //Magic number based on various observations (varying dRate and v)
+            let r = Math.abs(factor / dRateTest);
+            if (Math.abs(r) < 1000) {
+                let g = -90 * sign - this.d; //Perpendicular to local direction
+                let cx = Math.cos(g * Math.PI / 180) * r + this.x;
+                let cy = -Math.sin(g * Math.PI / 180) * r + this.y;
+                let turnCircle = "<circle r='" + r + "' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
+                let turnCircleCenter = "<circle r='1' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
+                this.eSVG.innerHTML = this.eSVG.innerHTML + turnCircle + turnCircleCenter;
+            }
+        }
+	}
+
+    /**
+     * Remove car from DOM
+     */
+    destroy = function() {
+        this.eSVG.remove();
+        this.eDebug.remove();
+        this.eCar.remove();
+    }
 	
-    this._pickRandomCarType = function() {
-        var _maxWeights = 0; C_carTypeWeights.forEach(function(e, i, a) { _maxWeights += e; });
-        var _r = Math.floor(Math.random() * _maxWeights);
-        var _t = 0;
-        var _i = 0;
-        var rv = 0;
-        C_carTypeWeights.some(function(e) {
+    /**
+     * 
+     * @returns 
+     */
+    _pickRandomCarType = function() {
+        let _maxWeights = 0; 
+        sim.carData.C_carTypeWeights.forEach(function(e, i, a) { _maxWeights += e; });
+        let _r = sim.randomInt(_maxWeights);
+        let _t = 0;
+        let _i = 0;
+        let rv = 0;
+        sim.carData.C_carTypeWeights.some(function(e) {
             _t += e;
             if (_t > _r) { rv = _i; return true; }
             _i++;
@@ -73,28 +184,47 @@ function Car() {
         return rv;
     };
 
-    this._pickRandomColor = function() {
+    /**
+     * Returns a hex color string ("#abc").  Uses CSS color shorthand. Digits range between A and D (a lightist, dusty color), 64 unique colors
+     * @returns Returns a hex color string ("#abc").
+     */
+    _pickRandomColor = function() {
         //Returns a hex color string ("#abc").  Uses CSS color shorthand.  Digits range between A and D (a lightish, dusty color), 64 unique colors
-        var _r = [Math.floor(Math.random() * 4 + 10), Math.floor(Math.random() * 4 + 10), Math.floor(Math.random() * 4 + 10)];
+        let _r = [sim.randomInt(14, 10), sim.randomInt(14, 10), sim.randomInt(14, 10)];
         return "#" + _r[0].toString(16) + _r[1].toString(16) + _r[2].toString(16);
     };
     
-    this.Accelerate = function(power, delta) {
+    /**
+     * Send speed-up signal to the car.  Simulates car's reaction.  May be hampered by mass of car or friction of wheels.
+     * @param {int} power - How much the accelerator pedal is being pushed
+     * @param {decimal} delta - Time in sec since last frame
+     */
+    accelerate = function(power, delta) {
         this.v += this.maxAccel * power * delta;
     };
 
-    this.Decelerate = function(power, delta) {
+    /**
+     * Send slow-down signal to the car.  Simulates car's reaction.  May be hampered by mass of car or friction of wheels.
+     * @param {int} power - How much the brake pedal is being pushed
+     * @param {decimal} delta - Time in sec since last frame
+     */
+    decelerate = function(power, delta) {
         this.v -= this.maxDecel() * power * delta;
     };
 	
-	this.Simulate = function(delta) {
+    /**
+     * Simulate the car.
+     * ! This might not be needed. Maybe move this to driver
+     * @param {decimal} delta - Time in sec since last frame
+     */
+	simulate = function(delta) {
         //delta = time since last simulation step
         
-		this.target = this.GetTarget(); //This will change the target down the road
-		this.dTarget = this.GetTargetAngle(); //Ranges from -180 to 180 with 0 pointing "forward" and -90 = "left side"
+		this.target = this.getTarget(); //This will change the target down the road
+		this.dTarget = this.getTargetAngle(); //Ranges from -180 to 180 with 0 pointing "forward" and -90 = "left side"
 
         if (this.target != null) {
-		    this.TurnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
+		    this.turnTo(this.target.x, this.target.y, delta); //This will change this.dRate to steer toward the road
 		    //this.dRate += 0.01 * delta;
 
             //this.Decelerate(1, delta);
@@ -108,11 +238,15 @@ function Car() {
         this.y += Math.sin(this.d * Math.PI / 180) * this.v * delta / 1000;
 	}
 	
-	this.GetTargetAngle = function() {
+    /**
+     * Get angle of target relative to direction car is pointing, in degrees.
+     * @returns Angle in degrees ranging from -180 to 180, with 0 pointing "forward", -90 pointing "left"
+     */
+	getTargetAngle = function() {
         //Return angle in degrees ranging from -180 to 180
         //with 0 pointing "forward", -90 pointing "left" and 90 pointing "right".
         if (this.target == null) return null;
-		var deg = angleFromCoords(this.x, this.y, this.target.x, this.target.y);
+		let deg = angleFromCoords(this.x, this.y, this.target.x, this.target.y);
 
 		//Convert to local (so 0deg faces "forward")
 		deg -= this.d; 
@@ -122,88 +256,44 @@ function Car() {
 		return deg;
 	}
 	
-	this.Render = function() {
-        //if (this.target == undefined) return; //May be if in slow mode
-		$(this.e).css("left", Math.round(this.x) - 16) //-16 for half-length of car
-            .css("top", Math.round(this.y) - 8) //-8 for half-width of car
-            .css("transform", "rotate(" + Math.round(this.d) + "deg)")
-			.attr("title", this.driver.name);
-        if (this.maxV > 200) $(this.e).addClass("hotrod");
-		
-		//Draw extra SVG info
-        if (this.target != null) {
-            var x1 = Math.round(this.x);
-            var y1 = Math.round(this.y);
-            var x2 = Math.round(this.target.x);
-            var y2 = Math.round(this.target.y);
-            
-            var d1 = -this.d - 90; //Start of arc is in front of car
-            var d2 = -this.d - this.dTarget - 90; //End of arc is at red line to target
-            
-            var target = "<line class='targ' x1='" + x1 + "' y1='" + y1 + "' x2='" + x2 + "' y2='" + y2 + "' />";
-            var steeringTarget = "<path class='steer' d='" + describeArc(x1, y1, 40, d1, d2) + "' />";
-            var svg = "<svg id='svg" + this.id + "' class='cardebug'>" + target + steeringTarget + "</svg>";
-            if ($("BODY > svg#svg" + this.id).length == 0)
-                $("BODY").append(svg);
-            else
-                $("BODY > svg#svg" + this.id).replaceWith(svg);
-        }
-		
-        //Add some text debugging data
-        if ($("#dbg" + this.id).length == 0)
-			$("BODY > DIV#cars").append("<div id='dbg" + this.id + "' class='carExtra'></div>");
-		var debugText = "<b>" + this.driver.name + "</b>"
-            + "<br>v=" + this.v.toFixed(0) + " (" + getMph(this.v) + " mph)"
-            + "<br>d=" + this.d.toFixed(0) 
-            + "<br>dTarget=" + (this.dTarget == null ? "" : this.dTarget.toFixed(0))
-            + "<br>dRate=" + this.dRate.toFixed(0);
-        $("#dbg" + this.id).html(debugText).css("top", this.y + 20).css("left", this.x + 20);
-
-        //Draw turn circle
-        //Turn circle is based on dRate.  
-        //dRate=0 is a straight line (infinite radius).  
-        //Don't draw circles with radius greater than 1000
-        //Circle center point will be somewhere along line +/-90deg from direction of car
-        //dRate < 0 = turn left, dRate > 0 = turn right
-        //Eyeball, dRate=30 = ~3 car lengths radius.  Car length = 32px
-        //If dRate=30 = r=50, then dRate=15 = r=100 and dRate=5 = r=300 and dRate=60 = r=25
-        //That matches the equation:  r=30*50/dRate
-        svg = document.getElementById("svg" + this.id);
-        var dRateTest = this.dRate;
-        if (Math.abs(dRateTest) > 0.0001) {
-            var sign = Math.abs(dRateTest) / dRateTest;
-            const factor = 2865; //Magic number based on various observations (varying dRate and v)
-            var r = Math.abs(factor / dRateTest);
-            if (Math.abs(r) < 1000) {
-                var g = -90 * sign - this.d; //Perpendicular to local direction
-                var cx = Math.cos(g * Math.PI / 180) * r + this.x;
-                var cy = -Math.sin(g * Math.PI / 180) * r + this.y;
-                var turnCircle = "<circle r='" + r + "' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
-                var turnCircleCenter = "<circle r='1' cx='" + cx + "' cy='" + cy + "' class='turnCircle'></circle>";
-                svg.innerHTML = svg.innerHTML + turnCircle + turnCircleCenter;
-            }
-        }
-	}
-
-    this.GetTarget = function() {
+	
+    /**
+     * Get reference to a node in the road network.  If too close to current target, get the next one.
+     * @returns A reference to a node from the road network.
+     */
+    getTarget = function() {
         if (this.target == null) return null;
-        var dist = this.DistanceTo(this.target.x, this.target.y);
-        var lookAheadDist = this.v / 2;
+        let dist = this.distanceTo(this.target.x, this.target.y);
+        let lookAheadDist = this.v / 2;
         if (lookAheadDist < 30) lookAheadDist = 30;
         if (dist < lookAheadDist) {
             //Get next node (which may be on another road)
-            var i = Math.floor(Math.random() * this.target.nextList.length);
+            let i = sim.randomInt(this.target.nextList.length); //Random meandering (no purposeful goal)
             this.target = this.target.nextList[i];
         }
         return this.target;
 	}
 	
-	this.DistanceTo = function(x, y) {
-		var dist = Math.sqrt(Math.pow(this.x - x, 2) + Math.pow(this.y - y, 2)); //Pythag
+    /**
+     * Measure how far away something is from car
+     * @param {decimal} x 
+     * @param {decimal} y 
+     * @returns Decimal number in pixels
+     */
+    distanceTo = function(x, y) {
+        let hypot = Math.hypot(this.x - x, this.y - y); //? Use this instead?
+		let dist = Math.sqrt(Math.pow(this.x - x, 2) + Math.pow(this.y - y, 2)); //Pythag
 		return dist;
 	}
 	
-	this.TurnTo = function(x, y, delta) {
+    /**
+     * 
+     * @param {decimal} x 
+     * @param {decimal} y 
+     * @param {decimal} delta Time in seconds since last frame
+     * @returns An angle in degrees relative to car's direction
+     */
+	turnTo = function(x, y, delta) {
 		//If car is at (0, 0) and pointed at angle 0 and target is at (100, 10), then target angle = ~10 deg.
 		//This will be a simple algorithm.  Given the car's turning radius, it's possible to get stuck circling
 		//a target forever.  This algorithm does not care if that happens.
@@ -230,7 +320,13 @@ function Car() {
 		return localAng;
 	}
 	
-	this.getTurnRate = function(requestDRate, delta) {
+    /**
+     * Dunno man, see internal comments
+     * @param {decimal} requestDRate - Requested direction turn rate
+     * @param {decimal} delta - Time in seconds since last frame
+     * @returns 
+     */
+	getTurnRate = function(requestDRate, delta) {
 		//4.0 rules:  dRateMax is dependant on v:  the faster you go, the slower the turn rate.  This is stupid.
 		//4.1 rules:  dRateMax is a constant now, not dependant on v.
 		//Also, dRateJerkMax is dumb.  
@@ -258,52 +354,27 @@ function Car() {
         //then turn it slowly back to zero (oversteer a bit)?
 
 		//Get the basics down
-		var dRateMax = 3; //Units unknown, produces a "peppy" but realistic turn rate
-		var curDRate = this.dRate;
-		var dRateJerkMax = 0.1; //How quickly the steering wheel is being turned
-		var sign = Math.abs(requestDRate) / requestDRate; //Either +1 or -1
+		let dRateMax = 3; //Units unknown, produces a "peppy" but realistic turn rate
+		let curDRate = this.dRate;
+		let dRateJerkMax = 0.1; //How quickly the steering wheel is being turned
+		let sign = Math.abs(requestDRate) / requestDRate; //Either +1 or -1
 		
 		//Apply rules
 		if (Math.abs(requestDRate) > dRateMax) requestDRate = dRateMax * sign * delta;
 		//requestDRate = curDRate + requestDRate * dRateJerkMax;
 		
 		//"Turn" the wheel at a certain speed
-		var dif = requestDRate - curDRate;
+		let dif = requestDRate - curDRate;
 		//if (requestDRate > 20) console.log(this.dRate + " " + curDRate + " " + requestDRate + " " + dRateJerkMax);
 		//if (dif > dRateMax) requestDRate = curDRate + dRateMax;
 		
 		return requestDRate;
 	}
-	
-    //Properties
-    this.id = 0;
-    this.e = null; //DOM element for rendering
-    this.color = this._pickRandomColor();
-    this.type = this._pickRandomCarType();
-    this.weight = Math.floor(Math.random() * (C_weightSpreads[this.type].max - C_weightSpreads[this.type].min) + C_weightSpreads[this.type].min);
-    this.width = C_carSizes[this.type].width;
-    this.height = C_carSizes[this.type].height;
-    this.fuelLevel = C_defaultFuel;
-    this.driver = new Driver();
-    this.driver.Car = this;
-    this.horsepower = C_horsepower[this.type];
-    this.horseMultiplier = Math.random() * 0.4 - 0.2; //Plus or minus 20% (variances of engines)
-    this.maxAccel = function() { return this.weight / (this.horsepower * this.horseMultiplier); };
-    this.brakepower = this.horsepower * 1.5; //Can brake faster than can accelerate
-    this.brakeMultiplier = Math.random() * 0.4 - 0.2; //Plus or minus 20% (variances of brakes)
-    this.maxDecel = function() { return this.weight / (this.brakepower * this.brakeMultiplier); };
-    this.turnRadius = Math.floor(Math.random() * 10 + 1); //1 for motorcycles, 10 for 18 wheelers
-	this.target = null;
-    
-    //Rules
-    this.maxV = 0;
-    this.dRate = 0; //How much the steering wheel is turned
 
-    //Time-sensitive stuff
-    this.x = 0;
-    this.y = 0;
-    this.v = 0;
-    this.d = 0; //degrees, 0-360
-    this.coolDown = 0;
-    this.curAction = driverActivity.Nothing;
+    /**
+     * Return age of car in seconds
+     */
+    get age() {
+        return (new Date() - this._createdTime) / 1000; //Seconds
+    }
 };

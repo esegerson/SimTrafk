@@ -3,129 +3,73 @@
 //car.js before this
 //road.js before this
 
-function putEmitterBehind(targetNode, distance) {
-    var emitterPos = rn.getPositionBehindNode(targetNode, distance);
-    if (emitterPos == null) { console.log("Can't place emitter"); return; }
-    emitter.x = emitterPos.x;
-    emitter.y = emitterPos.y;
-    emitter.d = emitterPos.d;
-    emitter.render();
-}
-
 function init() {
-    //Set version
-    if (window.location.href.indexOf("index.html") > -1) version = "4.1";
-    if (window.location.href.indexOf("road-test.html") > -1) version = "4.2";
-    if (window.location.href.indexOf("interactive.html") > -1) version = "4.3";
-    
-	//Init road network
-    rn = new RoadNetwork();
-    if (version == "4.1") {
-        rn.generateRoad("sine");
-        rn.render();
-        emitter = new Emitter();
-        emitter.constructor();
-        emitter.nearestNode = rn.roads[0].nodes[0];
-    } else if (version == "4.2") {
-        rn.loadNetwork(roadNetworkData);
-        rn.render();
-        emitter = new Emitter();
-        emitter.constructor();
-        emitter.nearestNode = rn.roads[0].nodes[0];
-        putEmitterBehind(emitter.nearestNode, 64);
-    } else if (version == "4.3") {
-        rn.generateRoad("circle", 16);
-        rn.render();
-        emitter = new Emitter();
-        emitter.constructor();
-        emitter.nearestNode = rn.nodes[0];
-        putEmitterBehind(emitter.nearestNode, 256);
-        window.addEventListener("mousemove", function(e) {
-            window.mouseX = e.clientX;
-            window.mouseY = e.clientY;
-        });
+    //Simple road network for v0.6
+    window.roadNetworkData = {
+        "comment": "Testing Beziers",
+        "boundary": { "minX": 0, "maxX": 1024, "minY": 0, "maxY": 1024 },
+        "roads": [
+            {
+                "id": 1,
+                "comment": "Part of an octagon",
+                "color": "red",
+                "name": "Bezier Test",
+                "nodes": [
+                    { "id": 1, "x": 128, "y": 512 },
+                    { "id": 2, "x": 512, "y": 215, "curve": 100 },
+                    { "id": 3, "x": 784, "y": 784 }
+                ]
+            }
+        ]
     }
+    sim.roadNetwork = new sim.RoadNetwork();
+    sim.roadNetwork.loadNetwork(roadNetworkData);
+    sim.roadNetwork.render();
+    
+    //Create one emitter
+    sim.emitters.push(new sim.Emitter(sim.roadNetwork.nodes[0], 64));
+    sim.emitters[0].tryEmit();
+    
+    //What's this for?
+    window.addEventListener("mousemove", function(e) {
+        window.mouseX = e.clientX;
+        window.mouseY = e.clientY;
+    });
 }
 
 //Startup
-$(function() {
-    return;
+document.addEventListener("DOMContentLoaded", () => {
     init();
-    if (version == "4.1") {
-        $("#slRate").on("input change", changeRate);
-	    $("#slVelo").on("input change", changeVelo);
-	    $("#slDir").on("input change", changeDir);
-	    changeRate();
-	    changeVelo();
-	    changeDir();
-	    lastTime = Date.now();
-        step();
-    } else if (version == "4.2") {
-        emitter.rate = 20 * 1000; //milliseconds
-        step();
-    } else {
-        //v4.3 or v4.4
-        //putEmitterBehind(emitter.nearestRoad.roadId, emitter.nearestRoad.nodeId, 60);
-        emitter.rate = 20 * 1000; //milliseconds
-        //step();
-    }
-	
-	$("IMG[alt='www.000webhost.com']").closest("DIV").remove();
+    step(); //Start the simulation
 });
 
-function changeRate() {
-	var r = $("#slRate").val();
-	var s = parseFloat(Math.round(r / 100) / 10).toFixed(0);
-	$("#lblSlRate").text(s);
-	emitter.rate = r * 1;
-}
-
-function changeVelo() {
-	var v = $("#slVelo").val();
-	var s = Math.round(v);
-	$("#lblSlVelo").text(s);
-	emitter.v = v * 1;
-}
-
-function changeDir() {
-	var d = $("#slDir").val();
-	var s = Math.round(d);
-	$("#lblSlDir").text(s);
-	emitter.d = d * 1;
-	emitter.render();
-}
-
 function step() {
-    var now = Date.now();
-    var delta = (now - lastTime) * (slow ? 0.1 : 1);
-    lastTime = now;
+    let now = Date.now();
+    let delta = (now - sim.run.lastTime) * (sim.run.slow ? 0.1 : 1);
+    sim.run.lastTime = now;
     simulate(delta);
+    cullAll();
 
-    if (!stop)
+    if (!sim.run.stop)
         setTimeout(function() {
             window.requestAnimationFrame(step);
-        }, 1000 / fps * slow ? 1000 : 1);
+        }, 1000 / sim.globals.fps * sim.run.slow ? 1000 : 1);
 }
 
 function simulate(delta) {
 	var debug = "There's something wrong with the steering.  Too jerky.  Too fast.  Too slow.  Needs to emulate human reaction times.<br>";
-	$.each(emitter.carParticles, function(i, cp) {
-        if (roadNetwork.roads == undefined) {
-		    if (!pause) cp.car.Simulate(delta, roadPath);
-        } else {
-            if (!pause) cp.car.Simulate(delta, roadNetwork);
-        }
-		cp.car.Render();
-        debug += formatSteeringNum(cp.car.dTarget, cp.car.id);
-	});
-    debug += "<br>Mouse: (" + window.mouseX + ", " + window.mouseY + ")";
+    sim.drivers.forEach(d => {
+        if (!sim.run.pause) d.car.simulate(delta);
+		d.car.render();
+        debug += formatSteeringNum(d.car.dTarget, d.car.id);
+    });
+	debug += "<br>Mouse: (" + window.mouseX + ", " + window.mouseY + ")";
 	$("#debug").html(debug);
 	
-	emitter.cullAll();
+	//emitter.cullAll();
 
-	if (emitter.lastCarEmitted() != null && new Date() - emitter.lastCarEmitted() < emitter.rate) return;
+    sim.emitters.forEach(e => { e.tryEmit(); });
 	
-	if (!pause) emitter.TryEmit();
 	return;
 	
 	
@@ -250,14 +194,23 @@ function carHasNeighbor(car, map) {
 }
 
 function pauseSim() {
-    pause = !pause;
-	lastTime = Date.now();
+    sim.run.pause = !sim.run.pause;
+	sim.run.lastTime = Date.now();
 }
 
 function slowSim() {
-    slow = !slow;
-    pause = false;
-    lastTime = Date.now();
+    sim.run.slow = !sim.run.slow;
+    sim.run.pause = false;
+    sim.run.lastTime = Date.now();
+}
+
+function stopSim() {
+    sim.run.stop = !sim.run.stop;
+    if (!sim.run.stop) {
+        //Restart things
+        sim.run.lastTime = Date.now();
+        step();
+    }
 }
 
 function toggleSteering() {
@@ -330,4 +283,24 @@ function angleFromCoords(sourcex, sourcey, targetx, targety) {
 	if (dy < 0 && dx < 0) deg = deg - 180;
 
 	return deg;
+}
+
+function cullAll() {
+    //Remove cars from sim.drivers when car leaves the screen.
+    const margin = 100;
+    let w0 = -margin;
+    let h0 = -margin;
+    let w1 = $(window).width() + margin;
+    let h1 = $(window).height() + margin;
+    for (let i = sim.drivers.length - 1; i  >= 0; i--) {
+        let c = sim.drivers[i].car;
+        if (c.age > 10 && (c.x < w0 || c.x > w1 || c.y < h0 || c.y > h1)) {
+            //Minimum 10 second age so emitter can be placed off-screen
+            let deleted = sim.drivers.splice(i, 1)[0]; //Remove from list of drivers
+            deleted.car.eSVG.remove();
+            deleted.car.eDebug.remove();
+            deleted.car.eCar.remove();
+            $("#spanAlive").text(sim.drivers.length + " driving"); //! TODO: code smell
+        }
+    };
 }

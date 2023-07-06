@@ -21,16 +21,16 @@
     user-select: none;
     cursor: pointer;
 }
-.brake {
+.car.brake {
     border-left: solid 4px red;
 }
-.accel {
+.car.accel {
     border-right: solid 4px #0f0;
 }
-.dead {
+.car.dead {
     background-color: #888 !important;
 }
-.hotrod {
+.car.hotrod {
     text-shadow: 0 0 2px red, 0 0 2px red;
 }
 
@@ -44,15 +44,6 @@
 	z-index: 4;
 }
 
-.roadDot {
-	border: solid 1px green;
-	background-color: yellow;
-	border-radius: 10px;
-	width: 6px;
-	height: 6px;
-	position: absolute;
-}
-
 INPUT[type=range] { width: 100px; position: relative; top: 7px; }
 
 #debug { font-size: 80%; font-family: sans-serif; }
@@ -60,7 +51,7 @@ INPUT[type=range] { width: 100px; position: relative; top: 7px; }
 #debug > DIV > SPAN { border-radius: 0 20px 20px 20px; width: 20px; height: 20px; display: block; background-color: #999; margin-left: 11px; }
 #debug > DIV > SPAN > SPAN { display: block; font-family: sans-serif; font-size: 80%; }
 
-.carExtra {
+.carDebug {
 	position: absolute;
 	border: solid 1px #888;
 	background-color: rgba(128, 128, 128, 0.3);
@@ -70,6 +61,8 @@ INPUT[type=range] { width: 100px; position: relative; top: 7px; }
 	font-size: 10px;
 	color: #444;
 	border-radius: 3px;
+	pointer-events: none;
+	padding: 3px;
 }
 
 svg {
@@ -113,5 +106,4 @@ DIV#roadNetwork > svg > circle.firstnode.virtual { fill: black; stroke: none; }
 #beziers circle.bezier.next { fill: purple; }
 #beziers path.bezier { fill: transparent; stroke-width: 1px; stroke: blue; }
 .draggable { cursor: move; }
-.cardebug { pointer-events: none; }
 #bezsubdiv circle { fill: orange; }

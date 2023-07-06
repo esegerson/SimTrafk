@@ -3,7 +3,7 @@
 <head lang="en">
     <meta charset="UTF-8">
     <title>SimTrafk</title>
-    <meta http-equiv="refresh" content="0; url='../v0.5.1/index.html'" />
+    <!-- <meta http-equiv="refresh" content="0; url='../v0.5.1/index.html'" /> -->
     <meta name="description" content="Do you think roads are poorly designed?  Do you think you can do better?
         Prove it with this fun HTML5 game!">
     <meta name="author" content="Eric Segerson">
@@ -18,10 +18,11 @@
     <link href="game.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
 	<script src="globals.js"></script>
+    <script src="car.js"></script>
+    <script src="driver.js"></script>
     <script src="emitter.js"></script>
-	<script src="car.js"></script>
-    <script src="road.js"></script>
-    <script src="road1.js"></script>
+	<script src="road.js"></script>
+    <script src="road1.js"></script><!--data file-->
 	<script src="game.js"></script>
     <style>
         .message { transform: rotate(0deg); transition: transform 1s; transform-origin: top right; }
@@ -47,13 +48,28 @@
 <body>
     <div class="message">
         <h1>Experiment #0.6</h1>
-        <p>Refactored code.</p>
+        <p>TODO:</p>
+        <style>s { opacity: 0.5; }</style>
+        <ol>
+            <li>road.render() needs work, which will fix drag & drop</li>
+            <li>Check that all code is inside sim
+                <ul><li>game.js needs work</li></ul>
+            </li>
+            <li>Work up better UI for sim control (pause/slow/stop)</li>
+            <li>Get drag & drop working again</li>
+            <li>Curve road</li>
+            <li>Make car stop at end of road</li>
+            <li>Make car stop if car in front</li>
+        </ol>
+        <p>Refactored code; all code is now in a "sim" object.  Cleared out a lot of test code that's no longer useful, and moved other code around into more logical places or scopes.</p>
+        <p>Screen layout (rendering) is now more structured and coherent.</p>
+        <p>Roads are now curved.  Cars now follow each node along the curve.</p>
         
         <span id="spanAlive"></span>
         <!-- <button id="btnAdd" onclick="add()">Add cars</button> -->
         <button id="btnPause" onclick="pauseSim()">Pause Sim</button>
         <button id="btnSlow" onclick="slowSim()">Slow Sim</button>
-        <button id="btnStop" onclick="stop = true">Stop Sim</button>
+        <button id="btnStop" onclick="stopSim()">Stop Sim</button>
 		<button id="btnSteering" onclick="toggleSteering()">Show Steering</button>
 		<button id="btnHide" onclick="$(this).parent().rotate()" class="close">X</button><br>
 		<div>
@@ -66,8 +82,6 @@
             <a href="../v0.1/index.html">0.1</a>,
             <a href="../v0.2/index.html">0.2</a>,
             <a href="../v0.3/index.html">0.3</a>,
-            <a href="../v0.4/index.html">0.4</a>,
-            <a href="v4/index.html">4.0</a>,
             <a href="../v0.4/index.html">0.4</a>,
             <a href="../v0.5.0/index.html">0.5.0</a>,
             <a href="../v0.5.1/index.html">0.5.1</a>,
@@ -92,7 +106,19 @@
         </div>
     </noindex>
     <!--googleon: all-->
-	<div id="road"></div>
-	<div id="cars"></div>
+    <div id="simcontainer">
+        <div id="road">
+            <div id="roadBackground"></div>
+            <div id="roadLines"></div>
+            <div id="roadNodes"></div>
+            <div id="roadBeziers"></div>
+        </div>
+        <div id="cars">
+            <div id="carSVG"></div>
+            <div id="carDebugBox"></div>
+            <div id="carShoes"></div>
+        </div>
+        <div id="emitters"></div>
+    </div>
 </body>
 </html>
