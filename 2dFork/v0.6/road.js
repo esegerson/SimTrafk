@@ -16,8 +16,8 @@ sim.RoadNetwork = class RoadNetwork {
     dragObj; //For drag & drop
 
     constructor() {
-        this.roads = [];
-        this.nodes = [];
+        this.roads = Array();
+        this.nodes = Array();
 
         setTimeout(this.makeDraggable, 1000);
         //this.makeDraggable();
@@ -26,8 +26,8 @@ sim.RoadNetwork = class RoadNetwork {
     generateRoad = function(type, count) {
         var w = $(window).width();
         var h = $(window).height();
-        this.roads = [];
-        this.nodes = [];
+        this.roads = Array();
+        this.nodes = Array();
         var r = new sim.Road(1, "gray");
         if (type == "sine") {
             //Simple sine wave
@@ -85,8 +85,8 @@ sim.RoadNetwork = class RoadNetwork {
         if (data.roads == null || data.roads.length < 1) return;
 
         //Init network
-        this.roads = [];
-        this.nodes = [];
+        this.roads = Array();
+        this.nodes = Array();
 
         //Parse data object, all roads, all nodes
         data.roads.forEach(r => {
@@ -131,7 +131,12 @@ sim.RoadNetwork = class RoadNetwork {
         });    
     }
 
-    interpolateNetwork = function() {
+    /**
+     * Take the rough outline from the data file and smooth out the curves.
+     * Add additinal nodes to the network.
+     * @param {boolean} init - True if this is the first time this is called, default = false.
+     */
+    interpolateNetwork = function(init) {
         let getBezierSubdivideNodes = function(p0, p1, p2, p3, numSubdivisions) {
             /*  Formula for drawing bezier curves:
                 B(t) = (1 - t)^3 * P0 + 3 * (1-t)^2 * t * P1 + 3 * (1-t) * t^2 * P2 + t^3 * P3
@@ -141,9 +146,11 @@ sim.RoadNetwork = class RoadNetwork {
                 P2 = second control point
                 P3 = end of line
             */
-            let rv = [];
-            for (var t = 0; t < 1; t 
-                += 1 / numSubdivisions) {
+            let rv = Array();
+            let tinc = 1 / numSubdivisions;
+            let t0 = tinc; //Skip first one
+            let t1 = 1;// - tinc; //Skip last one
+            for (var t = t0; t < t1; t += tinc) {
                 rv.push({
                     t: t,
                     x: Math.pow(1 - t, 3) * p0.x + 3 * Math.pow(1 - t, 2) * t * p1.x + 3 * (1 - t) * Math.pow(t, 2) * p2.x + Math.pow(t, 3) * p3.x,
@@ -152,103 +159,116 @@ sim.RoadNetwork = class RoadNetwork {
             }
             return rv;
         }
-        
-        //Interpolate each road
-        this.roads.forEach(r => {
-            //Interpolate each node in each road
-            r.nodes.forEach((n,i) => {
-                let newNodeList = [];
-                let prev = n.prevList[0];
-                let next = n.nextList[0];
-                if (prev != undefined && next != undefined) {
-                    let prevBez = prev.bezierPoints;
-                    let curBez = n.bezierPoints;
-                    let nextBez = next.bezierPoints;
-                    let bezNodes1 = getBezierSubdivideNodes(
-                        {x: prev.x, y: prev.y},
-                        {x: prevBez.next.x, y: prevBez.next.y},
-                        {x: curBez.prev.x, y: curBez.prev.y},
-                        {x: n.x, y: n.y},
-                        this.C_numBezierSubdivides
-                    );
-                    let bezNodes2 = getBezierSubdivideNodes(
-                        {x: n.x, y: n.y},
-                        {x: curBez.next.x, y: curBez.next.y},
-                        {x: nextBez.prev.x, y: nextBez.prev.y},
-                        {x: next.x, y: next.y},
-                        this.C_numBezierSubdivides
-                    );
-                    let i = 0;
-                    bezNodes1.concat(bezNodes2).forEach(b => {
-                        let newNode = new Node(r, n.id * 1000 + i, b.x, b.y, 0);
-                        newNodeList.push(newNode);
-                        i++;
-                    });
-                }
-            });
-        });
-    }
 
-    addVirtualNodes = function() {
-        //Add more hinting for the cars, since I may have defined the roads simplistically (distant nodes).
-        //Algorithm here just subdivides in half.  Repeat until satisfied.
-        //TODO:  Not quite working on joins
-        //TODO:  Account for curve
-        //?ALSO:  It works well but is this even needed?
-        var didSubdivide = false;
-        this.roads.forEach(r => {
-            var nodeCopy = [];
-            r.nodes.forEach((n, i) => {
-                if (i > 0 || n.joins != undefined) { //Skip first node if not joining
-                    var nodePrev = {};
-                    if (i == 0)
-                        nodePrev = this.roads
-                            .find(x => x.id == n.joins.roadId).nodes
-                            .find(x => x.id == n.joins.nodeId);
-                    else
-                        nodePrev = r.nodes[i - 1];
-                    var h = Math.hypot((nodePrev.x - n.x), (nodePrev.y - n.y));
-                    if (h > this.C_maxNodeDist) {
-                        var newNode = {
-                            x: (nodePrev.x + n.x) / 2,
-                            y: (nodePrev.y + n.y) / 2,
-                            isVirtual: true
-                        };
-                        if (i == 0) {
-                            newNode.joins = structuredClone(n.joins);
-                            delete n.joins;
+        init = sim.setDefaultIfEmpty(init, false);
+
+        //Auto-detect if init is needed, even if false was passed in.
+        //The second node on the first road should be interpolated.
+        if (!this.roads[0].nodes[1].isInterpolated) {
+            //This network needs interpolation
+            init = true;
+        }
+
+        if (init) {
+            //Interpolate each road
+            this.roads.forEach(r => {
+                //Clear out old interpolation
+                for (let i = r.nodes.length - 1; i >= 0; i--) {
+                    let n = r.nodes[i];
+                    if (n.isInterpolated) r.nodes.splice(i, 1);
+                    n.interpolatedNextList = Array();
+                }
+
+                let newNodeList = Array();
+                //Interpolate each node in each road
+                r.nodes.forEach((n,i) => {
+                    n.nextList.forEach(next => {
+                        //Interpolate each road segment from cur-to-next
+                        let curBez = n.bezierPoints;
+                        let nextBez = next.bezierPoints;
+                        let bezNodes = getBezierSubdivideNodes(
+                            {x: n.x, y: n.y},
+                            {x: curBez.next.x, y: curBez.next.y},
+                            {x: nextBez.prev.x, y: nextBez.prev.y},
+                            {x: next.x, y: next.y},
+                            this.C_numBezierSubdivides
+                        );
+
+                        //Build new chain of subdivided nodes, backward: easier to build Next chain this way
+                        let nextNode = next;
+                        for (let j = bezNodes.length - 1; j >= 0; j--) {
+                            let newNode = new sim.Node(r, null, bezNodes[j].x, bezNodes[j].y, 0);
+                            newNode.isInterpolated = true;
+                            newNode.interpolatedNextList.push(nextNode);
+                            nextNode = newNode;
                         }
-                        nodeCopy.push(newNode);
-                        didSubdivide = true;
-                    }
-                }
-                nodeCopy.push(structuredClone(n)); //Copy original nodes
-            });
-            if (r.nodes[r.nodes.length - 1].joins != undefined) {
-                //Subdivide connector to next road
-                var n = r.nodes[r.nodes.length - 1];
-                var nextRoadId = n.joins.roadId;
-                var nextNodeId = n.joins.nodeId;
-                var nodeNext = this.roads.find(x => x.id == nextRoadId).nodes.find(x => x.id == nextNodeId);
-                var h = Math.hypot((nodeNext.x - n.x), (nodeNext.y - n.y));
-                if (h > this.C_maxNodeDist) {
-                    var newNode = {
-                        x: (nodeNext.x + n.x) / 2,
-                        y: (nodeNext.y + n.y) / 2,
-                        isVirtual: true,
-                        joins: structuredClone(n.joins)
-                    };
-                    delete n.joins;
-                    nodeCopy.push(newNode);
-                    didSubdivide = true;
-                }
-            }
-            r.nodes = nodeCopy;
-        });
-        if (didSubdivide) this.addVirtualRoadNodes(); //Run until all road nodes are sufficiently spaced
+                        n.interpolatedNextList.push(nextNode);
+                        if (n.interpolatedNextList.length > 0) {
+                            let itr = n;
+                            while (itr.interpolatedNextList.length > 0) {
+                                newNodeList.push(itr); //Build node array for road
+                                itr = itr.interpolatedNextList[0]; //Advance
+                            }
+                            if (itr.nextList.length == 0) newNodeList.push(itr); //Include end of road
+                        }
+                    }); //end nextList
+                }); //end Nodes
+                r.nodes = newNodeList;
+            }); //end Roads
+        } else {
+            //init = false, just rejigger the interpolated points based on the control (original) nodes.
+            //This situation happens when the road is drag & dropped
+            //Just change the x and y on each interpolated node.
+            
+            this.roads.forEach(r => {
+                r.nodes.filter(n => !n.isInterpolated).forEach(n => {
+                    n.nextList.forEach(next => {
+                        let curBez = n.bezierPoints;
+                        let nextBez = next.bezierPoints;
+                        let bezNodes = getBezierSubdivideNodes(
+                            {x: n.x, y: n.y},
+                            {x: curBez.next.x, y: curBez.next.y},
+                            {x: nextBez.prev.x, y: nextBez.prev.y},
+                            {x: next.x, y: next.y},
+                            this.C_numBezierSubdivides
+                        );
+                        let subdivIter = n.interpolatedNextList[0];
+                        for (let i = 0; i < bezNodes.length; i++) {
+                            subdivIter.x = bezNodes[i].x;
+                            subdivIter.y = bezNodes[i].y;
+                            subdivIter = subdivIter.interpolatedNextList[0];
+                        }
+                    }); //end nextList            
+                }); //end Nodes
+            }); //end Roads
+        } //end init=true/false
     }
 
     render = function() {
+        /*  DOM structure:
+                <div id="road">
+                    <svg id="roadBackground">
+                        <path ... for road 1></path>
+                    </svg>
+                    <svg id="roadLines">
+                        <path ... for road 1></path>
+                        ...
+                    </svg>
+                    <svg id="roadNodes">
+                        <circle ... for road 1 node 1></circle>
+                        <circle ... for road 1 node 2></circle>
+                        <circle ... for road 1 node 3></circle>
+                        ...
+                    </svg>
+                    <svg id="roadBeziers">
+                        <circle ... for road 1 node 1 prev />
+                        <circle ... for road 1 node 1 next />
+                        <line ... for road 1 node 1 tangent />
+                        ...
+                    </svg>
+                </div>
+        */
+
         //Turn containers into vars
         let eBackground = document.getElementById("roadBackground");
         let eLines = document.getElementById("roadLines");
@@ -261,10 +281,6 @@ sim.RoadNetwork = class RoadNetwork {
         eNodes.innerHTML = "";
         eBeziers.innerHTML = "";
 
-        let svgBuffer = document.createElement("SVG");
-        let svgMain = document.createElement("SVG");
-        svgBuffer.setAttribute("class", "buffer");
-
         //Draw each road in network
         this.roads.forEach(r => {
             //Need to make this:
@@ -272,27 +288,27 @@ sim.RoadNetwork = class RoadNetwork {
             let svgLineData = "M";
             r.nodes.forEach((n, i) => {
                 if (i > 0) svgLineData += " L";
-                svgLineData += " " + n.x + " " + n.y;
+                svgLineData += " " + Math.round(n.x) + " " + Math.round(n.y);
                 if (i == 0 && n.prevList.length > 0) {
                     //Add to beginning of road
                     var prev = n.prevList[0];
-                    svgLineData = "M" + prev.x + " " + prev.y + " L " + n.x + " " + n.y;
+                    svgLineData = "M" + Math.round(prev.x) + " " + Math.round(prev.y) + " L " 
+                        + Math.round(n.x) + " " + Math.round(n.y);
                 } else if (i == r.nodes.length - 1 && n.nextList.length > 0) {
                     //Add to end of road
                     var next = n.nextList[0];
-                    svgLineData += " L " + next.x + " " + next.y;
+                    svgLineData += " L " + Math.round(next.x) + " " + Math.round(next.y);
                 }
             });
             let pathElem = document.createElement("PATH");
             pathElem.setAttribute("d", svgLineData);
             pathElem.setAttribute("stroke", r.color);
-            pathElem.setAttribute("title", r.comment);
-            svgMain.appendChild(pathElem);
+            eLines.appendChild(pathElem);
 
             //At bottom (under the roads and dots), draw the road width
             var bufferElem = document.createElement("PATH");
             bufferElem.setAttribute("d", svgLineData);
-            svgBuffer.appendChild(bufferElem);
+            eBackground.appendChild(bufferElem);
         });
 
         //Draw the "curve" control points (for debugging)
@@ -325,24 +341,43 @@ sim.RoadNetwork = class RoadNetwork {
         var svgBezSubdiv = document.createElement("svg");
         svgBezSubdiv.id = "bezsubdiv";
         
-        //let bezNodes = beztest();
-        let svgContents = "";
-        //bezNodes.forEach(b => {
-        //    let pt = "<circle r='3' cx='" + b.x + "' cy='" + b.y + "'></circle>\n";
-        //    svgContents += pt;
-        //});
-        svgBezSubdiv.innerHTML = svgContents;
-        //window.road.innerHTML = window.road.innerHTML + svgBez.outerHTML + svgBezSubdiv.outerHTML;
+        let bezSvg = document.getElementById("roadBeziers");
+        bezSvg.innerHTML = "";
+        this.nodes.forEach(n => {
+            let b = n.bezierPoints;
+            let pt0 = document.createElement("circle");
+            pt0.classList.add("prev");
+            pt0.setAttribute("r", "3");
+            pt0.setAttribute("cx", Math.round(b.prev.x));
+            pt0.setAttribute("cy", Math.round(b.prev.y));
+            let pt1 = document.createElement("circle");
+            pt1.classList.add("next");
+            pt1.setAttribute("r", "3");
+            pt1.setAttribute("cx", Math.round(b.next.x));
+            pt1.setAttribute("cy", Math.round(b.next.y));
+            let ln = document.createElement("line");
+            ln.setAttribute("x1", Math.round(b.prev.x));
+            ln.setAttribute("y1", Math.round(b.prev.y));
+            ln.setAttribute("x2", Math.round(b.next.x));
+            ln.setAttribute("y2", Math.round(b.next.y));
+            bezSvg.appendChild(ln);
+            bezSvg.appendChild(pt0);
+            bezSvg.appendChild(pt1);
+        });
+        bezSvg.innerHTML = bezSvg.innerHTML; //To get SVG to render
 
         //Draw dot for each node (overtop the lines)
         this.roads.forEach(r => {
             var foundFirstNonVirtualNode = false;
             r.nodes.forEach((n, i) => {
                 var dotElem = document.createElement("CIRCLE");
-                dotElem.setAttribute("cx", n.x);
-                dotElem.setAttribute("cy", n.y);
-                var rad = 8;
-                if (n.isVirtual != undefined) rad = 3;
+                dotElem.setAttribute("cx", Math.round(n.x));
+                dotElem.setAttribute("cy", Math.round(n.y));
+                let rad = 8;
+                if (n.isInterpolated) { 
+                    rad = 3;
+                    dotElem.setAttribute("data-inter", "true");
+                }
                 dotElem.setAttribute("r", rad);
                 if (!foundFirstNonVirtualNode && n.isVirtual == undefined) {
                     dotElem.classList.add("firstnode");
@@ -351,15 +386,16 @@ sim.RoadNetwork = class RoadNetwork {
                 dotElem.setAttribute("data-roadid", r.id);
                 dotElem.setAttribute("data-nodeix", i);
                 if (n.isVirtual != undefined) dotElem.classList.add("virtual");
-                svgMain.appendChild(dotElem);
+                if (n.isInterpolated) dotElem.classList.add("virtual");
+                eNodes.appendChild(dotElem);
             });
         });
         
-        var divRoadNetwork = document.createElement("DIV");
-        divRoadNetwork.id = "roadNetwork";
-        divRoadNetwork.innerHTML =
-            svgMain.outerHTML + svgBuffer.outerHTML; //Could not get this to render with append
-        window.road.append(divRoadNetwork);
+        //SVG isn't rendering with DOM manipulation.  Force redraw with .innerHTML.
+        eBackground.innerHTML = eBackground.innerHTML;
+        eLines.innerHTML = eLines.innerHTML;
+        eNodes.innerHTML = eNodes.innerHTML
+        eBeziers.innerHTML = eBeziers.innerHTML;
     }
 
     getPositionBehindNode = function(targetNode, distance) {
@@ -373,68 +409,59 @@ sim.RoadNetwork = class RoadNetwork {
         return { x: newX, y: newY, d: dir * 180 / Math.PI - 180 };
     }
 
-    initDragDrop = function(obj) {
-        obj.onmousedown = function(e) {
-            obj.dx = obj.getBoundingClientRect().left - e.clientX;
-            obj.dy = obj.getBoundingClientRect().top  - e.clientY;
-            obj.isDown = true;
-            this.dragObj = this;
-        }
-        obj.onmouseup = function(e) {
-            obj.isDown = false;
-        }
-        obj.onmousemove = function(e) {
-            if (this.dragObj && this.dragObj.isDown) {
-                this.dragObj.setAttribute("cx", e.clientX);
-                this.dragObj.setAttribute("cy", e.clientY);
-            }
-        }
-    }
-
     makeDraggable = function() {
         //Make network drag & droppable
-        let svg = document.querySelector("#roadNetwork > svg");
-        svg.addEventListener("mousedown", this.startDrag);
-        svg.addEventListener("mousemove", this.drag);
-        svg.addEventListener("mouseup", this.endDrag);
-        svg.addEventListener("mouseleave", this.endDrag);
+        let svg = document.querySelector("#roadNodes");
+        svg.addEventListener("mousedown", sim.roadNetwork.startDrag);
+        svg.addEventListener("mousemove", sim.roadNetwork.drag);
+        svg.addEventListener("mouseup", sim.roadNetwork.endDrag);
+        svg.addEventListener("mouseleave", sim.roadNetwork.endDrag);
         svg.childNodes.forEach(c => {
-            if (c.tagName == "circle") c.classList.add("draggable");
+            if (c.tagName == "circle" && c.getAttribute("data-inter") == null) 
+                c.classList.add("draggable");
         });
     }
 
     startDrag = function(evt) {
         if (evt.target.classList.contains("draggable")) {
-            this.selectedElement = evt.target;
-            this.selectedElement.classList.add("selected");
+            sim.roadNetwork.selectedElement = evt.target;
+            sim.roadNetwork.selectedElement.classList.add("selected");
         }
-    }
+    };
     
     drag = function(evt) {
-        if (this.selectedElement) {
+        if (sim.roadNetwork.selectedElement) {
             evt.preventDefault();
             let dragX = evt.clientX;
             let dragY = evt.clientY;
-            this.selectedElement.setAttribute("cx", dragX);
-            this.selectedElement.setAttribute("cy", dragY);
+            sim.roadNetwork.selectedElement.setAttribute("cx", dragX);
+            sim.roadNetwork.selectedElement.setAttribute("cy", dragY);
             //Record new data in road network
-            var r = this.roads.find(r => r.id == this.selectedElement.getAttribute("data-roadid"));
-            var n = r.nodes[this.selectedElement.getAttribute("data-nodeix")];
+            var r = sim.roadNetwork.roads.find(r => r.id == sim.roadNetwork.selectedElement.getAttribute("data-roadid"));
+            var n = r.nodes[sim.roadNetwork.selectedElement.getAttribute("data-nodeix")];
             n.x = dragX;
             n.y = dragY;
-            this.render();
-            this.makeNetworkDraggable();
-            //selectedElement.classList.add("selected"); //didn't work
+            sim.roadNetwork.interpolateNetwork(false);
+            sim.roadNetwork.render();
+            sim.roadNetwork.makeDraggable();
+            sim.emitters.forEach(e => {
+                e.reposition(e.distance);
+                e.render();
+            });
         }
-    }
+    };
     
     endDrag = function(evt) {
-        if (this.selectedElement == null) return;
-        this.selectedElement.classList.remove("selected");
-        this.selectedElement = null;
-        this.render();
-        this.makeNetworkDraggable();
-    }
+        if (sim.roadNetwork.selectedElement == null) return;
+        sim.roadNetwork.selectedElement.classList.remove("selected");
+        sim.roadNetwork.selectedElement = null;
+        sim.roadNetwork.render();
+        sim.roadNetwork.makeDraggable();
+        sim.emitters.forEach(e => {
+            e.reposition(e.distance);
+            e.render();
+        });
+    };
 }
 
 sim.Road = class Road {
@@ -448,7 +475,7 @@ sim.Road = class Road {
         this.color = color;
         this.name = color + " road";
         this.comment = "";
-        this.nodes = [];
+        this.nodes = Array(); //List of non-interpolated nodes, I think.
     }
 }
 
@@ -463,10 +490,12 @@ sim.Node = class Node {
     prevList; //Array of references to nodes
     nextList; //Array of references to nodes
     curve; //In px.  The descriptor for the cubic bezier.  0 = sharp angle, 50 = a gentle curve
+    isInterpolated; //Distinguish between nodes in the original data and bezier-curve nodes.
+    interpolatedNextList; //Array of references to interpolated nodes.
     
     //Constants
     C_DefaultCurve = 50;
-    C_MaxCurve = 100;
+    C_MaxCurve = 200;
 
     //Constructor and methods
     constructor(road, id, x, y, curve) {
@@ -474,53 +503,16 @@ sim.Node = class Node {
         this.id = id;
         this.x = sim.setDefaultIfEmpty(x, 0);
         this.y = sim.setDefaultIfEmpty(y, 0);
-        this.prevList = [];
-        this.nextList = [];
+        this.prevList = Array(); //List of references to non-interpolated nodes
+        this.nextList = Array(); //List of references to non-interpolated nodes
         curve = sim.setDefaultIfEmpty(curve, this.C_DefaultCurve);
         if (curve > this.C_MaxCurve) curve = this.C_MaxCurve;
         if (curve < 0) curve = 0;
-        this.curve = curve;        
+        this.curve = curve;
+        this.isInterpolated = false;
+        this.interpolatedNextList = Array(); //List of references to interpolated or non-interpolated nodes
     }
     
-    /**
-     * !I don't think this is being used, candidate delete
-     */
-    get angle() {
-        if (this.prevList.length == 0) return 0;
-        if (this.nextList.length == 0) return 0;
-
-        //Pick a prev & next (just pick first one)
-        var prev = this.prevList[0];
-        var next = this.nextList[0];
-
-        //Figure out angle created between prev and next using side-side-side geometry
-        //First, calculate the side lengths
-        var side1 = Math.hypot(prev.x - this.x, prev.y - this.y); //Prev leg
-        var side2 = Math.hypot(this.x - next.x, this.y - next.y); //Next leg
-        var side3 = Math.hypot(next.x - prev.x, next.y - prev.y); //Imaginary leg from next to prev
-        //Formula is:  cos(a) = (y^2+z^2-x^2)/2yz
-        //where "a" = the angle I want, y = side1, z = side2, x = side3
-        //To get "a" use Math.acos()
-        var rad = Math.acos((Math.pow(side1, 2) + Math.pow(side2, 2) - Math.pow(side3, 2)) / (2 * side1 * side2));
-
-        //rad is always (0 >= rad >= 180).  Can't tell if it's a left-turn or right-turn
-        //Do some detection to change so range is (0 >= rad >= 360)
-        var a1 = Math.atan2(prev.y - this.y, prev.x - this.x);
-        var a2t = Math.atan2(this.y - next.y, this.x - next.x);
-        if (a2t < 0) a2t += Math.PI * 2;
-        var a2 = a1 - Math.atan2(this.y - next.y, this.x - next.x); //Relative to a1. -179 is a right U-turn, 0 is straight, 179 is a left U-turn
-        if (a2 < -Math.PI) a2 += Math.PI;
-        if (a2 > Math.PI) a2 -= Math.PI;
-        //if (a2 < 0) rad = Math.PI * 2 - rad;
-
-        var deg = function(rad) {
-            return Math.round(rad * 180 / Math.PI);
-        }
-
-        console.log("rad="+deg(rad) + " a1="+deg(a1) + " a2=" + deg(a2) + " a2t=" + deg(a2t));
-        return rad; 
-    }
-
     /**
      * Used to determine the curve of the road.  Took a while to get this function working properly.
      */
@@ -532,7 +524,7 @@ sim.Node = class Node {
             
             Returns { prev: {x,y}, next: {x,y} }
         */
-        
+
         //Pick a prev & next (just pick first one)
         let prev = this.prevList.length == 0 ? null : this.prevList[0];
         let next = this.nextList.length == 0 ? null : this.nextList[0];
@@ -540,8 +532,8 @@ sim.Node = class Node {
         //Set up return variable, defaulting to this node
         let rv = { prev: { x: this.x, y: this.y }, next: { x: this.x, y: this.y } };
 
-        //Return this node if beginning or end of road
-        if (prev == null || next == null) return rv;
+        //Return this node if beginning or end of road or if this isn't an original node
+        if (this.isInterpolated || prev == null || next == null) return rv;
 
         //Calc bezier points
         let dx1 = prev.x - this.x;
@@ -566,5 +558,17 @@ sim.Node = class Node {
         rv.next.x = Math.cos(f2) * this.curve + this.x;
         rv.next.y = Math.sin(f2) * this.curve + this.y;
         return rv;
+    }
+
+    getNextTarget = function(method, ignoreSubdisions) {
+        method = sim.setDefaultIfEmpty(method, "random");
+        if (method == "random") {
+            if (ignoreSubdisions || this.interpolatedNextList.length == 0) {
+                let i = sim.randomInt(this.nextList.length); //Random meandering (no purposeful goal)
+                return this.nextList[i];
+            }
+            let i = sim.randomInt(this.interpolatedNextList.length); //Random
+            return this.interpolatedNextList[i];
+        }
     }
 }

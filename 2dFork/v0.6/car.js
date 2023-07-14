@@ -102,7 +102,7 @@ sim.Car = class {
         this.eCar.style.left = Math.round(this.x) - 16 + "px"; //-16 for half-length of car
         this.eCar.style.top = Math.round(this.y) - 8 + "px"; //-8 for half-width of car
         this.eCar.style.transform = "rotate(" + Math.round(this.d) + "deg";
-        if (this.maxV > 200) this.e.classList.add("hotrod");
+        if (this.maxV > 200) this.eCar.classList.add("hotrod");
 
 		
 		//Draw extra SVG info
@@ -268,12 +268,11 @@ sim.Car = class {
         if (lookAheadDist < 30) lookAheadDist = 30;
         if (dist < lookAheadDist) {
             //Get next node (which may be on another road)
-            let i = sim.randomInt(this.target.nextList.length); //Random meandering (no purposeful goal)
-            this.target = this.target.nextList[i];
+            this.target = this.target.getNextTarget("random", false);
         }
         return this.target;
 	}
-	
+
     /**
      * Measure how far away something is from car
      * @param {decimal} x 

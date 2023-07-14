@@ -15,6 +15,9 @@ sim.Emitter = class Emitter {
 	_counter; //How many cars emitted
 	nearestNode; //Reference to sim.roadNetwork.nodes, the first target of emitted cars
 	lastEmit;
+	distance;
+	
+	static get C_defaultDistanceBehindNode() { return 64; }
 
 	/**
 	 * @param {*} targetNode Node in the road network to assign cars to aim for
@@ -29,6 +32,7 @@ sim.Emitter = class Emitter {
 		this.positionBehind(targetNode, distance);
 		this.render();
 		this.lastEmit = new Date(new Date().getTime() - this.rate * 2); //Emit instantly on init
+		this.distance = distance;
 	}
 
 	canEmit = function() {
@@ -75,6 +79,14 @@ sim.Emitter = class Emitter {
 
 	positionBehind = function(targetNode, distance) {
 		let emitterPos = sim.roadNetwork.getPositionBehindNode(targetNode, distance);
+		if (emitterPos == null) { console.log("Can't place emitter"); return; }
+		this.x = emitterPos.x;
+		this.y = emitterPos.y;
+		this.d = emitterPos.d;
+	}
+
+	reposition = function(distance) {
+		let emitterPos = sim.roadNetwork.getPositionBehindNode(this.nearestNode, distance);
 		if (emitterPos == null) { console.log("Can't place emitter"); return; }
 		this.x = emitterPos.x;
 		this.y = emitterPos.y;

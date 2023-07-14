@@ -7,8 +7,10 @@ let sim = {
         accel: 30,
         decel: this.accel * 4,
         C_scale: 0.144, //meters per pixel, see notes.txt
+        C_convertMpsMph: 2.2369, //meters per second to miles per hour
         version: "0.6",
-        carCount: 0
+        carCount: 0,
+        fStops: [0.5, 0.7, 1, 1.4, 2, 2.8, 4, 5.6, 8, 11, 15, 21, 30, 45, 60, 90, 120] //Used for rate slider
     },
     
     run: {
@@ -88,10 +90,10 @@ let sim = {
     roadNetwork: {},
     
     //This holds the data for the emitters.  See emitter.js
-    emitters: [],
+    emitters: Array(),
 
     //This holds the data for the drivers on the road.  Each driver has a Car.  See driver.js and car.js
-    drivers: [],
+    drivers: Array(),
 
     //Helper functions
 
@@ -140,6 +142,10 @@ let sim = {
      * @returns Integer in miles per hour
      */
     getMph: function(v) {
-        return Math.round(v * sim.globals.C_scale * 2.2369); //magic number converts m/s to mph
+        return Math.round(v * this.globals.C_scale * this.globals.C_convertMpsMph);
+    },
+
+    getKph: function(v) {
+        return Math.round(v * this.globals.C_scale * 60 * 60 / 1000);
     }
 };

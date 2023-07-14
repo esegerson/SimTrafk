@@ -11,23 +11,38 @@ function init() {
         "roads": [
             {
                 "id": 1,
-                "comment": "Part of an octagon",
+                "comment": "Short test road",
                 "color": "red",
-                "name": "Bezier Test",
+                "name": "Short Road",
                 "nodes": [
                     { "id": 1, "x": 128, "y": 512 },
-                    { "id": 2, "x": 512, "y": 215, "curve": 100 },
-                    { "id": 3, "x": 784, "y": 784 }
+                    { "id": 2, "x": 256, "y": 128, "curve": 200 },
+                    { "id": 3, "x": 640, "y": 768, "curve": 200 },
+                    { "id": 4, "x": 256, "y": 768, "curve": 200 },
+                    { "id": 5, "x": 320, "y": 512 }
                 ]
-            }
+            }/*,
+            {
+                "id": 2,
+                "comment": "Spur",
+                "color": "green",
+                "name": "Spur Street",
+                "nodes": [
+                    { "id": 1, "x": 384, "y": 64, "joins": { "roadId": 1, "nodeId": 2 } },
+                    { "id": 2, "x": 576, "y": 64 },
+                    { "id": 3, "x": 704, "y": 320 },
+                    { "id": 4, "x": 704, "y": 512 }
+                ]
+            }*/
         ]
     }
     sim.roadNetwork = new sim.RoadNetwork();
     sim.roadNetwork.loadNetwork(roadNetworkData);
+    sim.roadNetwork.interpolateNetwork();
     sim.roadNetwork.render();
     
     //Create one emitter
-    sim.emitters.push(new sim.Emitter(sim.roadNetwork.nodes[0], 64));
+    sim.emitters.push(new sim.Emitter(sim.roadNetwork.nodes[0], sim.Emitter.C_defaultDistanceBehindNode));
     sim.emitters[0].tryEmit();
     
     //What's this for?
@@ -35,6 +50,24 @@ function init() {
         window.mouseX = e.clientX;
         window.mouseY = e.clientY;
     });
+
+    //More UI
+    document.getElementById("slRate").setAttribute("max", sim.globals.fStops.length - 1);
+    document.getElementById("slRate").addEventListener("input", function(e) {
+        var sliderVal = e.target.value;
+        var fStopVal = sim.globals.fStops[sliderVal];
+        var newRateValMs = fStopVal * 1000;
+        document.getElementById("lblSlRate").innerText = fStopVal + " sec";
+        sim.emitters[0].rate = newRateValMs;
+    });
+    document.getElementById("slVelo")?.addEventListener("input", function(e) {
+        let v = e.target.value * 1;
+        let mph = sim.getMph(v);
+        document.getElementById("lblSlVelo").innerText = v + " px/sec (" + mph + " mph)";
+        sim.emitters[0].v = v;
+    });
+    document.getElementById("slRate").dispatchEvent(new CustomEvent("input", { "bubbles": true }));
+    document.getElementById("slVelo").dispatchEvent(new CustomEvent("input", { "bubbles": true }));
 }
 
 //Startup
@@ -287,7 +320,7 @@ function angleFromCoords(sourcex, sourcey, targetx, targety) {
 
 function cullAll() {
     //Remove cars from sim.drivers when car leaves the screen.
-    const margin = 100;
+    const margin = 150;
     let w0 = -margin;
     let h0 = -margin;
     let w1 = $(window).width() + margin;
@@ -304,3 +337,16 @@ function cullAll() {
         }
     };
 }
+
+function getCarSpeed() {
+    let c = sim.drivers[0].car;
+      let x0 = c.x;
+      let y0 = c.y;
+      console.log("t0: (" + Math.round(x0) + ", " + Math.round(y0) + "), v=" + Math.round(c.v));
+      setTimeout(function() {
+          let x1 = c.x;
+          let y1 = c.y;
+          let h = Math.round(Math.hypot(x1-x0, y1-y0));
+          console.log("t1: (" + Math.round(x1) + ", " + Math.round(y1) + "), speed = " + h + " px/sec");
+      }, 1000);
+  }
